@@ -17,8 +17,11 @@
 ### 📍 实时进度追踪
 朗读时逐词高亮当前读到的地方，自动滚动跟随，进度条实时显示"第 X / N 词 · X%"。
 
-### 🔗 点击跳转
-点击短文中的任意加粗生词，平滑滚动到上方对应词卡并闪烁高亮，方便查看词性和中文释义。
+### 🔗 点击跳转 + 发音
+点击短文中的任意加粗生词，平滑滚动到上方对应词卡，自动翻转显示释义并朗读单词发音。
+
+### 🔄 词卡翻转
+每个词卡支持点击 3D 翻转：正面仅英文，背面同时显示英文、词性、中文释义。每列标题旁有三档开关，可一键批量切换整列词卡的翻面状态。
 
 ### 📑 多份切换
 顶部一键切换 7 份词汇，导航栏自动更新为当前份的列链接。
@@ -50,6 +53,41 @@
 - Web Speech API（`SpeechSynthesis`）实现语音朗读
 - CSS 变量驱动的主题设计系统
 - 响应式布局，支持移动端和打印
+
+## 🚢 部署方式（GitHub Pages + Actions）
+
+本项目通过 `.github/workflows/jekyll-gh-pages.yml` 实现自动化部署，推送到 `main` 分支即自动发布到 GitHub Pages。
+
+### 工作流程
+
+1. **触发条件**：当代码推送到 `main` 分支时，GitHub Actions 自动触发部署流程
+2. **构建阶段**（`build` job）：
+   - 检出仓库代码
+   - 创建 `_site` 目录作为构建产物
+   - 将 `vocab-essays/vocab-essays.html` 复制为 `_site/index.html`（作为站点首页）
+   - 将 `README.md` 复制到 `_site/` 目录
+   - 打包 `_site` 目录为 Pages artifact
+3. **部署阶段**（`deploy` job）：
+   - 将 artifact 部署到 GitHub Pages
+   - 自动生成访问地址
+
+### 关键配置
+
+```yaml
+# 部署模式设为 workflow（通过 Actions 部署，而非 Jekyll 构建）
+build_type: workflow
+```
+
+与默认的 Jekyll 部署不同，本项目的 workflow 跳过了 Jekyll 构建过程，直接将 HTML 文件作为静态资源部署。这样访问者打开 Pages 链接时看到的就是完整的词汇学习页面，而非 README 的 Markdown 渲染。
+
+### 启用步骤
+
+1. 进入仓库 **Settings → Pages**
+2. **Build and deployment** 的 **Source** 选择 **GitHub Actions**
+3. 确保仓库中有 `.github/workflows/jekyll-gh-pages.yml` 文件
+4. 推送代码到 `main` 分支，Actions 会自动构建并部署
+
+部署完成后，访问 `https://<username>.github.io/<repo-name>/` 即可使用。
 
 ## 📄 License
 
