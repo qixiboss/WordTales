@@ -5809,6 +5809,19 @@ block.insertBefore(head, block.firstChild);
 });
 }
 
+function speakWord(word) {
+if (typeof speechSynthesis === 'undefined') return;
+speechSynthesis.cancel();
+var utterance = new SpeechSynthesisUtterance(word);
+utterance.lang = 'en-US';
+utterance.rate = 0.85;
+utterance.pitch = 1.0;
+var voices = speechSynthesis.getVoices();
+var bestVoice = pickBestVoice(voices);
+if (bestVoice) utterance.voice = bestVoice;
+speechSynthesis.speak(utterance);
+}
+
 function initWordJump() {
 document.querySelectorAll('.essay-block').forEach(function(block){
 var section = block.closest('.column-section');
@@ -5843,6 +5856,8 @@ c.classList.remove('card-flash');
 card.scrollIntoView({ behavior:'smooth', block:'center' });
 setTimeout(function(){
 card.classList.add('card-flash');
+card.classList.add('flipped');
+speakWord(wordEl.textContent.trim());
 }, 300);
 setTimeout(function(){
 card.classList.remove('card-flash');
