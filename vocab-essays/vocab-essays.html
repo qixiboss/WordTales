@@ -127,6 +127,34 @@ flex-wrap:wrap;
 border-bottom:2px solid var(--accent);
 padding-bottom:.8rem;
 margin-bottom:1.5rem}
+.flip-toggle {
+display:inline-flex;
+align-items:center;
+gap:0;
+background:var(--bg2);
+border:1px solid var(--rule);
+border-radius:20px;
+padding:2px;
+margin-left:auto;
+flex-shrink:0;
+font-size:.7rem}
+.flip-toggle button {
+font-family:var(--sans);
+font-size:.68rem;
+font-weight:600;
+border:none;
+background:transparent;
+color:var(--muted);
+padding:.25rem .6rem;
+border-radius:16px;
+cursor:pointer;
+transition:all .2s;
+white-space:nowrap}
+.flip-toggle button.active {
+background:var(--accent);
+color:#fff}
+.flip-toggle button:hover:not(.active) {
+color:var(--accent)}
 .col-num {
 font-family:var(--serif);
 font-size:2.2rem;
@@ -160,26 +188,61 @@ margin-bottom:2.2rem}
 .vocab-card {
 background:var(--bg2);
 border-radius:8px;
-padding:.6rem .8rem;
 border-left:3px solid var(--accent2);
-transition:transform .15s,box-shadow .15s}
+perspective:600px;
+cursor:pointer;
+min-height:80px}
 .vocab-card:hover {
-transform:translateY(-2px);
 box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.card-inner {
+position:relative;
+width:100%;
+min-height:80px;
+transition:transform .5s cubic-bezier(.4,0,.2,1);
+transform-style:preserve-3d}
+.vocab-card.flipped .card-inner {
+transform:rotateY(180deg)}
+.card-face {
+position:absolute;
+top:0;left:0;
+width:100%;
+min-height:80px;
+backface-visibility:hidden;
+-webkit-backface-visibility:hidden;
+padding:.6rem .8rem;
+box-sizing:border-box;
+display:flex;
+align-items:center}
+.card-front {
+justify-content:center}
+.card-back {
+transform:rotateY(180deg);
+flex-direction:column;
+align-items:center;
+justify-content:center;
+text-align:center;
+gap:.2rem}
 .vocab-card .vw {
 font-family:var(--serif);
 font-weight:700;
 font-size:1rem;
 color:var(--accent);
-display:block}
+display:block;
+line-height:1.1}
+.card-front .vw {
+font-size:1.05rem;
+text-align:center;
+line-height:1}
 .vocab-card .vp {
 font-size:.72rem;
 color:var(--muted);
 font-style:italic;
-margin-right:.3rem}
+margin-right:.3rem;
+line-height:1.2}
 .vocab-card .vm {
 font-size:.82rem;
-color:var(--ink)}
+color:var(--ink);
+line-height:1.2}
 .essay-block {
 background:#fff;
 border:1px solid var(--rule);
@@ -5790,8 +5853,78 @@ card.classList.remove('card-flash');
 });
 }
 
+function initFlipCards() {
+document.querySelectorAll('.vocab-card').forEach(function(card){
+if (card.querySelector('.card-inner')) return;
+var vw = card.querySelector('.vw');
+var vp = card.querySelector('.vp');
+var vm = card.querySelector('.vm');
+if (!vw) return;
+var inner = document.createElement('div');
+inner.className = 'card-inner';
+var front = document.createElement('div');
+front.className = 'card-face card-front';
+front.appendChild(vw.cloneNode(true));
+var back = document.createElement('div');
+back.className = 'card-face card-back';
+back.appendChild(vw.cloneNode(true));
+if (vp) back.appendChild(vp.cloneNode(true));
+if (vm) {
+var line = document.createElement('div');
+line.appendChild(vm.cloneNode(true));
+back.appendChild(line);
+}
+while (card.firstChild) card.removeChild(card.firstChild);
+inner.appendChild(front);
+inner.appendChild(back);
+card.appendChild(inner);
+card.addEventListener('click', function(e){
+card.classList.toggle('flipped');
+});
+});
+}
+
+function initFlipToggles() {
+document.querySelectorAll('.column-section').forEach(function(section){
+var head = section.querySelector('.section-head');
+if (!head) return;
+if (head.querySelector('.flip-toggle')) return;
+var toggle = document.createElement('div');
+toggle.className = 'flip-toggle';
+var btnEn = document.createElement('button');
+btnEn.textContent = '英文';
+btnEn.dataset.mode = 'front';
+var btnCustom = document.createElement('button');
+btnCustom.textContent = '自定义';
+btnCustom.dataset.mode = 'custom';
+btnCustom.classList.add('active');
+var btnCn = document.createElement('button');
+btnCn.textContent = '释义';
+btnCn.dataset.mode = 'back';
+toggle.appendChild(btnEn);
+toggle.appendChild(btnCustom);
+toggle.appendChild(btnCn);
+head.appendChild(toggle);
+toggle.querySelectorAll('button').forEach(function(btn){
+btn.addEventListener('click', function(){
+toggle.querySelectorAll('button').forEach(function(b){ b.classList.remove('active'); });
+btn.classList.add('active');
+var mode = btn.dataset.mode;
+var cards = section.querySelectorAll('.vocab-card');
+if (mode === 'front') {
+cards.forEach(function(c){ c.classList.remove('flipped'); });
+} else if (mode === 'back') {
+cards.forEach(function(c){ c.classList.add('flipped'); });
+}
+});
+});
+});
+}
+
 // Initialize with set1
 document.addEventListener('DOMContentLoaded', function() {
+initFlipCards();
+initFlipToggles();
 initReadAloud();
 initWordJump();
 switchSet('set1', document.querySelectorAll('.set-btn')[0]);
