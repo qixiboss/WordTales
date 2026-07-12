@@ -345,6 +345,8 @@ background:var(--accent-soft);
 color:var(--accent2)}
 .word-popup {
 position:absolute;
+top:100%;
+left:0;
 z-index:100;
 background:var(--bg2);
 border:1px solid var(--accent);
@@ -6028,7 +6030,14 @@ break;
 }
 }
 if (!info) return;
-document.querySelectorAll('.word-popup').forEach(function(p){ p.remove(); });
+document.querySelectorAll('.word-popup').forEach(function(p){
+var parent = p.parentElement;
+if (parent) {
+parent.style.display = '';
+parent.style.position = '';
+}
+p.remove();
+});
 var popup = document.createElement('div');
 popup.className = 'word-popup';
 var pw = document.createElement('div');
@@ -6052,11 +6061,15 @@ line.appendChild(pm);
 popup.appendChild(line);
 }
 wordEl.style.position = 'relative';
+wordEl.style.display = 'inline-block';
+popup.addEventListener('click', function(ev){ ev.stopPropagation(); });
 wordEl.appendChild(popup);
 speakWord(wordEl.textContent.trim());
 document.addEventListener('click', function closePopup(ev){
 if (!popup.contains(ev.target) && ev.target !== wordEl) {
 popup.remove();
+wordEl.style.display = '';
+wordEl.style.position = '';
 document.removeEventListener('click', closePopup);
 }
 }, { once: true });
