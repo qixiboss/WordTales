@@ -184,7 +184,8 @@ width:100vw;height:100vh;
 background:rgba(245,242,238,.97);
 z-index:9999;
 display:none;
-overflow:hidden}
+overflow:hidden;
+touch-action:none}
 .game-overlay.active {
 display:block}
 .game-header {
@@ -6454,36 +6455,43 @@ floatReq = requestAnimationFrame(step);
 function makeFloatable(card) {
 var isDragging = false;
 var startX, startY, offsetX, offsetY;
-var hasMoved = false;
 
-card.addEventListener('mousedown', function(e){
+function getPos(e) {
+if (e.touches && e.touches.length > 0) {
+return {x: e.touches[0].clientX, y: e.touches[0].clientY};
+}
+return {x: e.clientX, y: e.clientY};
+}
+
+function onStart(e) {
 if (card.classList.contains('dropped')) return;
 isDragging = true;
-hasMoved = false;
 card.classList.add('dragging');
 card.classList.remove('floating');
 var rect = card.getBoundingClientRect();
-startX = e.clientX;
-startY = e.clientY;
+var pos = getPos(e);
+startX = pos.x;
+startY = pos.y;
 offsetX = rect.left;
 offsetY = rect.top;
 e.preventDefault();
-});
+}
 
-document.addEventListener('mousemove', function(e){
+function onMove(e) {
 if (!isDragging) return;
-hasMoved = true;
-var newX = offsetX + (e.clientX - startX);
-var newY = offsetY + (e.clientY - startY);
+var pos = getPos(e);
+var newX = offsetX + (pos.x - startX);
+var newY = offsetY + (pos.y - startY);
 card.style.left = newX + 'px';
 card.style.top = newY + 'px';
 if (card.floatState) {
 card.floatState.x = newX;
 card.floatState.y = newY;
 }
-});
+e.preventDefault();
+}
 
-document.addEventListener('mouseup', function(e){
+function onEnd(e) {
 if (!isDragging) return;
 isDragging = false;
 card.classList.remove('dragging');
@@ -6509,7 +6517,14 @@ floatCards.push(card);
 }
 if (!floatReq) startFloatLoop();
 }
-});
+}
+
+card.addEventListener('mousedown', onStart);
+document.addEventListener('mousemove', onMove);
+document.addEventListener('mouseup', onEnd);
+card.addEventListener('touchstart', onStart, {passive: false});
+document.addEventListener('touchmove', onMove, {passive: false});
+document.addEventListener('touchend', onEnd);
 }
 
 function dropCard(card) {
