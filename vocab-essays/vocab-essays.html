@@ -247,7 +247,7 @@ min-height:80px;
 box-sizing:border-box;
 transition:box-shadow .2s}
 .game-card.floating {
-will-change:transform,left,top}
+will-change:transform}
 .game-card.dragging {
 cursor:grabbing;
 z-index:500;
@@ -255,7 +255,6 @@ box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .game-card.dropped {
 position:relative;
 cursor:pointer;
-animation:none;
 transition:transform .2s}
 .game-card.dropped:hover {
 transform:scale(1.05)}
@@ -552,17 +551,6 @@ margin-right:.4rem}
 .word-popup .pm {
 font-size:.82rem;
 color:var(--ink)}
-.word-popup .pclose {
-display:block;
-margin-top:.4rem;
-font-size:.68rem;
-color:var(--muted);
-text-align:right;
-cursor:pointer;
-border-top:1px solid var(--rule);
-padding-top:.3rem}
-.word-popup .pclose:hover {
-color:var(--accent)}
 .vocab-card.card-flash {
 animation:cardFlash 2s ease-out;
 border-left-color:var(--accent);
@@ -5889,9 +5877,13 @@ document.querySelectorAll('.set-btn').forEach(function(b){ b.classList.remove('a
 if(btn) btn.classList.add('active');
 var nav = document.getElementById('toc');
 var navData = navMap[setId] || set1Nav;
-nav.innerHTML = navData.map(function(item){
-return '<a href="' + item.href + '">' + item.label + '</a>';
-}).join('');
+nav.innerHTML = '';
+navData.forEach(function(item){
+var a = document.createElement('a');
+a.href = item.href;
+a.textContent = item.label;
+nav.appendChild(a);
+});
 document.getElementById('setMeta').textContent = metaMap[setId] || set1Meta;
 }
 
@@ -6305,12 +6297,23 @@ var gameOverlay = null;
 var gameDropzone = null;
 var gameCards = [];
 var gameDroppedCount = 0;
+var floatCards = [];
+var floatReq = null;
+var CARD_W = 150;
+var CARD_H = 80;
+var cachedDzRect = null;
+
+function updateDzRect() {
+cachedDzRect = gameDropzone ? gameDropzone.getBoundingClientRect() : null;
+}
 
 function startGame(section) {
 var cards = section.querySelectorAll('.vocab-card');
 if (cards.length === 0) return;
 
-if (gameOverlay) gameOverlay.remove();
+if (gameOverlay) {
+endGame();
+}
 
 gameOverlay = document.createElement('div');
 gameOverlay.className = 'game-overlay active';
@@ -6341,6 +6344,8 @@ document.body.appendChild(gameOverlay);
 
 gameCards = [];
 gameDroppedCount = 0;
+floatCards = [];
+floatReq = null;
 var placedPositions = [];
 
 cards.forEach(function(card, idx){
@@ -6370,8 +6375,8 @@ inner.appendChild(front);
 inner.appendChild(back);
 gameCard.appendChild(inner);
 
-var cardW = 150;
-var cardH = 80;
+var cardW = CARD_W;
+var cardH = CARD_H;
 var maxAttempts = 50;
 var startX, startY;
 for (var attempt = 0; attempt < maxAttempts; attempt++) {
@@ -6388,8 +6393,7 @@ break;
 if (!overlap) break;
 }
 placedPositions.push({x:startX, y:startY});
-gameCard.style.left = startX + 'px';
-gameCard.style.top = startY + 'px';
+gameCard.style.transform = 'translate3d(' + startX + 'px,' + startY + 'px,0)';
 
 gameOverlay.appendChild(gameCard);
 gameCards.push(gameCard);
@@ -6397,25 +6401,19 @@ gameCards.push(gameCard);
 makeFloatable(gameCard);
 });
 
+updateDzRect();
 startFloatLoop();
-
-gameDropzone.addEventListener('dragover', function(e){
-e.preventDefault();
-});
+window.addEventListener('resize', updateDzRect);
 }
-
-var floatCards = [];
-var floatReq = null;
-var CARD_W = 150;
-var CARD_H = 80;
 
 function startFloatLoop() {
 if (floatReq) cancelAnimationFrame(floatReq);
 floatCards = Array.prototype.slice.call(document.querySelectorAll('.game-card.floating'));
 floatCards.forEach(function(card){
 if (!card.floatState) {
-var left = parseFloat(card.style.left) || 0;
-var top = parseFloat(card.style.top) || 0;
+var match = (card.style.transform || '').match(/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/);
+var left = match ? parseFloat(match[1]) : 0;
+var top = match ? parseFloat(match[2]) : 0;
 card.floatState = {
 x: left,
 y: top,
@@ -6428,7 +6426,7 @@ vy: (Math.random() - 0.5) * 1.2
 function step() {
 var w = window.innerWidth;
 var h = window.innerHeight;
-var dzRect = gameDropzone ? gameDropzone.getBoundingClientRect() : {left:0,right:0,top:0,bottom:0};
+var dz = cachedDzRect;
 floatCards.forEach(function(card){
 if (card.classList.contains('dragging') || card.classList.contains('dropped')) return;
 var s = card.floatState;
@@ -6438,23 +6436,22 @@ if (s.x <= 0) { s.x = 0; s.vx = Math.abs(s.vx); }
 if (s.x >= w - CARD_W) { s.x = w - CARD_W; s.vx = -Math.abs(s.vx); }
 if (s.y <= 0) { s.y = 0; s.vy = Math.abs(s.vy); }
 if (s.y >= h - CARD_H) { s.y = h - CARD_H; s.vy = -Math.abs(s.vy); }
-if (s.x + CARD_W > dzRect.left && s.x < dzRect.right &&
-s.y + CARD_H > dzRect.top && s.y < dzRect.bottom) {
-if (s.vx > 0 && s.x + CARD_W > dzRect.left && s.x < dzRect.left) {
+if (dz && s.x + CARD_W > dz.left && s.x < dz.right &&
+s.y + CARD_H > dz.top && s.y < dz.bottom) {
+if (s.vx > 0 && s.x + CARD_W > dz.left && s.x < dz.left) {
 s.vx = -Math.abs(s.vx);
 }
-if (s.vx < 0 && s.x < dzRect.right && s.x + CARD_W > dzRect.right) {
+if (s.vx < 0 && s.x < dz.right && s.x + CARD_W > dz.right) {
 s.vx = Math.abs(s.vx);
 }
-if (s.vy > 0 && s.y + CARD_H > dzRect.top && s.y < dzRect.top) {
+if (s.vy > 0 && s.y + CARD_H > dz.top && s.y < dz.top) {
 s.vy = -Math.abs(s.vy);
 }
-if (s.vy < 0 && s.y < dzRect.bottom && s.y + CARD_H > dzRect.bottom) {
+if (s.vy < 0 && s.y < dz.bottom && s.y + CARD_H > dz.bottom) {
 s.vy = Math.abs(s.vy);
 }
 }
-card.style.left = s.x + 'px';
-card.style.top = s.y + 'px';
+card.style.transform = 'translate3d(' + s.x + 'px,' + s.y + 'px,0)';
 });
 floatReq = requestAnimationFrame(step);
 }
@@ -6483,6 +6480,10 @@ startX = pos.x;
 startY = pos.y;
 offsetX = rect.left;
 offsetY = rect.top;
+document.addEventListener('mousemove', onMove);
+document.addEventListener('mouseup', onEnd);
+document.addEventListener('touchmove', onMove, {passive: false});
+document.addEventListener('touchend', onEnd);
 e.preventDefault();
 }
 
@@ -6491,8 +6492,7 @@ if (!isDragging) return;
 var pos = getPos(e);
 var newX = offsetX + (pos.x - startX);
 var newY = offsetY + (pos.y - startY);
-card.style.left = newX + 'px';
-card.style.top = newY + 'px';
+card.style.transform = 'translate3d(' + newX + 'px,' + newY + 'px,0)';
 if (card.floatState) {
 card.floatState.x = newX;
 card.floatState.y = newY;
@@ -6504,6 +6504,10 @@ function onEnd(e) {
 if (!isDragging) return;
 isDragging = false;
 card.classList.remove('dragging');
+document.removeEventListener('mousemove', onMove);
+document.removeEventListener('mouseup', onEnd);
+document.removeEventListener('touchmove', onMove);
+document.removeEventListener('touchend', onEnd);
 var cardRect = card.getBoundingClientRect();
 var dzRect = gameDropzone.getBoundingClientRect();
 if (cardRect.left < dzRect.right && cardRect.right > dzRect.left &&
@@ -6512,11 +6516,9 @@ dropCard(card);
 } else {
 card.classList.add('floating');
 if (!card.floatState) {
-var left = parseFloat(card.style.left) || 0;
-var top = parseFloat(card.style.top) || 0;
 card.floatState = {
-x: left,
-y: top,
+x: offsetX,
+y: offsetY,
 vx: (Math.random() - 0.5) * 1.2,
 vy: (Math.random() - 0.5) * 1.2
 };
@@ -6529,11 +6531,14 @@ if (!floatReq) startFloatLoop();
 }
 
 card.addEventListener('mousedown', onStart);
-document.addEventListener('mousemove', onMove);
-document.addEventListener('mouseup', onEnd);
 card.addEventListener('touchstart', onStart, {passive: false});
-document.addEventListener('touchmove', onMove, {passive: false});
-document.addEventListener('touchend', onEnd);
+
+card._cleanup = function() {
+document.removeEventListener('mousemove', onMove);
+document.removeEventListener('mouseup', onEnd);
+document.removeEventListener('touchmove', onMove);
+document.removeEventListener('touchend', onEnd);
+};
 }
 
 function dropCard(card) {
@@ -6542,29 +6547,36 @@ removeDroppedCard(gameDropzone.currentCard);
 }
 card.classList.remove('floating');
 card.classList.add('dropped');
+card.style.transform = '';
 card.style.position = 'relative';
-card.style.left = '';
-card.style.top = '';
 gameDropzone.classList.remove('empty');
 gameDropzone.appendChild(card);
 gameDropzone.currentCard = card;
+var idx = floatCards.indexOf(card);
+if (idx >= 0) floatCards.splice(idx, 1);
+
+if (card._dropClickHandler) {
+card.removeEventListener('click', card._dropClickHandler);
+}
+card.dataset.clickCount = '0';
+var handler = function(e){
+e.stopPropagation();
+var count = parseInt(card.dataset.clickCount || '0') + 1;
+card.dataset.clickCount = String(count);
+if (count === 1) {
+card.classList.add('flipped');
+} else if (count === 2) {
+card.classList.remove('flipped');
+card.dataset.clickCount = '0';
+} else {
+removeDroppedCard(card);
+}
+};
+card._dropClickHandler = handler;
+card.addEventListener('click', handler);
 gameDroppedCount++;
 var progress = gameOverlay.querySelector('.game-progress');
 if (progress) progress.textContent = '已收集 ' + gameDroppedCount + ' / ' + gameCards.length;
-
-var clickCount = 0;
-card.addEventListener('click', function(e){
-e.stopPropagation();
-clickCount++;
-if (clickCount === 1) {
-card.classList.add('flipped');
-} else if (clickCount === 2) {
-card.classList.remove('flipped');
-clickCount = 0;
-} else if (clickCount === 3) {
-removeDroppedCard(card);
-}
-});
 }
 
 function removeDroppedCard(card) {
@@ -6575,11 +6587,6 @@ gameDropzone.currentCard = null;
 if (gameDropzone.children.length === 0) {
 gameDropzone.classList.add('empty');
 }
-var progress = gameOverlay.querySelector('.game-progress');
-if (progress) {
-var collected = gameOverlay.querySelectorAll('.game-card.dropped').length;
-progress.textContent = '已收集 ' + collected + ' / ' + gameCards.length;
-}
 }
 
 function endGame() {
@@ -6587,13 +6594,18 @@ if (floatReq) {
 cancelAnimationFrame(floatReq);
 floatReq = null;
 }
+window.removeEventListener('resize', updateDzRect);
 if (gameOverlay) {
+gameCards.forEach(function(card){
+if (card._cleanup) card._cleanup();
+});
 gameOverlay.remove();
 gameOverlay = null;
 gameDropzone = null;
 gameCards = [];
 gameDroppedCount = 0;
 floatCards = [];
+cachedDzRect = null;
 }
 }
 
@@ -6607,11 +6619,11 @@ var front = document.createElement('div');
 front.className = 'essay-face';
 var back = document.createElement('div');
 back.className = 'essay-back';
+var essayHead = block.querySelector('.essay-head');
 while (block.firstChild) {
-if (block.firstChild === block.querySelector('.essay-head')) break;
+if (block.firstChild === essayHead) break;
 front.appendChild(block.firstChild);
 }
-var essayHead = block.querySelector('.essay-head');
 if (essayHead) {
 block.removeChild(essayHead);
 }
@@ -6684,13 +6696,22 @@ backEl.appendChild(srcDiv);
 if (data) {
 var transDiv = document.createElement('div');
 transDiv.className = 'analysis-trans';
-transDiv.innerHTML = '<span class="label">翻译：</span>' + data.trans;
+var label = document.createElement('span');
+label.className = 'label';
+label.textContent = '翻译：';
+transDiv.appendChild(label);
+transDiv.appendChild(document.createTextNode(data.trans));
 backEl.appendChild(transDiv);
 var list = document.createElement('ol');
 list.className = 'analysis-list';
 data.points.forEach(function(pt){
 var li = document.createElement('li');
-li.innerHTML = pt;
+var temp = document.createElement('div');
+temp.textContent = pt;
+var safe = temp.innerHTML
+.replace(/&lt;span class="keyword"&gt;/g, '<span class="keyword">')
+.replace(/&lt;\/span&gt;/g, '</span>');
+li.innerHTML = safe;
 list.appendChild(li);
 });
 backEl.appendChild(list);
