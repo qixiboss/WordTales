@@ -5981,7 +5981,16 @@ var tokens = [];
 var fullText = '';
 var ctx = { tokens: tokens, fullText: fullText };
 paragraphs.forEach(function(p, paraIdx){
-var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null);
+var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, {
+acceptNode: function(node){
+var parent = node.parentNode;
+while (parent && parent !== p) {
+if (parent.nodeName === 'BUTTON') return NodeFilter.FILTER_REJECT;
+parent = parent.parentNode;
+}
+return NodeFilter.FILTER_ACCEPT;
+}
+});
 var textNodes = [];
 var node;
 while (node = walker.nextNode()) textNodes.push(node);
@@ -6010,25 +6019,78 @@ if (paraIdx < paragraphs.length - 1) fullText += ' ';
 return { tokens: tokens, fullText: fullText };
 }
 
+var cachedVoices = [];
+
+function loadVoices() {
+if (typeof speechSynthesis === 'undefined') return [];
+var v = speechSynthesis.getVoices();
+if (v.length > 0) cachedVoices = v;
+return cachedVoices;
+}
+
+if (typeof speechSynthesis !== 'undefined') {
+loadVoices();
+speechSynthesis.onvoiceschanged = function(){
+loadVoices();
+};
+}
+
 function pickBestVoice(voices) {
-var preferred = ['Samantha','Sandy','Shelley','Reed','Eddy','Flo','Daniel','Karen','Tessa','Moira'];
-for (var i = 0; i < preferred.length; i++) {
-var match = voices.find(function(v){
-return v.name.indexOf(preferred[i]) >= 0 && v.lang.indexOf('en') === 0;
+if (!voices || voices.length === 0) voices = loadVoices();
+if (!voices || voices.length === 0) return null;
+
+var enVoices = voices.filter(function(v){
+return v.lang && v.lang.indexOf('en') === 0;
+});
+if (enVoices.length === 0) return null;
+
+var tiers = [
+['Samantha'],
+['Google US English', 'Google UK English Female', 'Google UK English Male'],
+['Microsoft Aria', 'Microsoft Jenny', 'Microsoft Zira', 'Microsoft Guy', 'Microsoft Davis'],
+['Sandy','Shelley','Reed','Eddy','Flo','Daniel','Karen','Tessa','Moira','Fiona'],
+['Microsoft David', 'Microsoft Mark']
+];
+
+for (var i = 0; i < tiers.length; i++) {
+for (var j = 0; j < tiers[i].length; j++) {
+var match = enVoices.find(function(v){
+return v.name.indexOf(tiers[i][j]) >= 0;
 });
 if (match) return match;
 }
-return voices.find(function(v){ return v.lang.indexOf('en') === 0; }) || null;
+}
+
+var neuralMatch = enVoices.find(function(v){
+return v.name.toLowerCase().indexOf('neural') >= 0 ||
+v.name.toLowerCase().indexOf('premium') >= 0 ||
+v.name.toLowerCase().indexOf('enhanced') >= 0;
+});
+if (neuralMatch) return neuralMatch;
+
+var usMatch = enVoices.find(function(v){ return v.lang === 'en-US'; });
+if (usMatch) return usMatch;
+
+return enVoices[0];
 }
 
 function toggleRead(block, btn) {
-if (currentBtn === btn && speechSynthesis.speaking) {
+if (currentBtn === btn && !readCancelled) {
 speechSynthesis.cancel();
 return;
 }
 speechSynthesis.cancel();
 resetReadButtons();
 if (currentBlock) unwrapWords(currentBlock);
+
+block.querySelectorAll('.word-popup').forEach(function(p){
+var parent = p.parentElement;
+if (parent) {
+parent.style.display = '';
+parent.style.position = '';
+}
+p.remove();
+});
 
 var paragraphs = block.querySelectorAll('p');
 var result = wrapWords(paragraphs);
@@ -6047,8 +6109,24 @@ statusLabel.className = 'read-status';
 statusLabel.textContent = '准备朗读…';
 progressBar.after(statusLabel);
 
-var voices = speechSynthesis.getVoices();
+var voices = loadVoices();
 var bestVoice = pickBestVoice(voices);
+
+if (!bestVoice) {
+btn.textContent = '朗读';
+btn.classList.add('reading');
+statusLabel.textContent = '当前环境不支持语音朗读，请用 Chrome/Safari 等浏览器打开';
+statusLabel.style.color = '#c0392b';
+setTimeout(function(){
+if (!readCancelled) {
+progressBar.remove();
+statusLabel.remove();
+btn.textContent = '朗读';
+btn.classList.remove('reading');
+}
+}, 4000);
+return;
+}
 
 var chunks = [];
 var sentences = result.fullText.match(/[^.!?]+[.!?]*/g) || [result.fullText];
@@ -6083,10 +6161,13 @@ totalClauses: clauses.length
 });
 
 function findTokenByGlobalChar(globalChar) {
-for (var i = 0; i < result.tokens.length; i++) {
-if (globalChar >= result.tokens[i].start && globalChar < result.tokens[i].end) {
-return result.tokens[i];
-}
+var lo = 0, hi = result.tokens.length - 1;
+while (lo <= hi) {
+var mid = (lo + hi) >> 1;
+var t = result.tokens[mid];
+if (globalChar < t.start) hi = mid - 1;
+else if (globalChar >= t.end) lo = mid + 1;
+else return t;
 }
 return null;
 }
@@ -6095,36 +6176,37 @@ var chunkIdx = 0;
 
 function getProsody(chunk) {
 var pitch = 1.0;
-var rate = 0.92;
+var rate = 0.95;
 var wordCount = chunk.text.split(/\s+/).length;
 
 if (chunk.type === 'question') {
-pitch = 1.12;
-rate = 0.88;
+pitch = 1.15;
+rate = 0.90;
 } else if (chunk.type === 'exclaim') {
-pitch = 1.08;
-rate = 0.95;
+pitch = 1.10;
+rate = 0.98;
 } else {
-pitch = 0.98;
-rate = 0.93;
+pitch = 1.0;
+rate = 0.95;
 }
 
 if (!chunk.isLastClause) {
-pitch += 0.03;
+pitch += 0.04;
 rate += 0.02;
 } else {
-pitch -= 0.04;
+pitch -= 0.03;
+rate -= 0.02;
 }
 
 if (wordCount > 12) {
-rate -= 0.05;
+rate -= 0.04;
 } else if (wordCount < 5) {
-rate += 0.03;
-pitch += 0.02;
+rate += 0.04;
+pitch += 0.03;
 }
 
-pitch = Math.max(0.8, Math.min(1.25, pitch));
-rate = Math.max(0.75, Math.min(1.05, rate));
+pitch = Math.max(0.85, Math.min(1.25, pitch));
+rate = Math.max(0.80, Math.min(1.05, rate));
 
 return { pitch: pitch, rate: rate };
 }
@@ -6170,6 +6252,7 @@ if (bestVoice) utterance.voice = bestVoice;
 
 var thisChunkStart = chunk.start;
 
+var scrollRaf = null;
 utterance.onboundary = function(e){
 clearHighlight();
 var globalChar = thisChunkStart + e.charIndex;
@@ -6179,14 +6262,20 @@ token = findTokenByGlobalChar(globalChar - 1) || findTokenByGlobalChar(globalCha
 }
 if (token) {
 token.el.classList.add('reading-highlight');
-var rect = token.el.getBoundingClientRect();
-if (rect.top < 80 || rect.bottom > window.innerHeight - 40) {
-token.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
 var wordIdx = result.tokens.indexOf(token) + 1;
 var pct = Math.round((token.end / totalLen) * 100);
 progressFill.style.width = pct + '%';
 statusLabel.textContent = '朗读中 · 第 ' + wordIdx + ' / ' + tokenCount + ' 词 · ' + pct + '%';
+if (!scrollRaf) {
+var scrollTarget = token.el;
+scrollRaf = requestAnimationFrame(function(){
+scrollRaf = null;
+var rect = scrollTarget.getBoundingClientRect();
+if (rect.top < 80 || rect.bottom > window.innerHeight - 40) {
+scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+});
+}
 }
 };
 
@@ -6197,9 +6286,12 @@ var delay = 0;
 if (chunkIdx < chunks.length) {
 var nextChunk = chunks[chunkIdx];
 if (nextChunk.clauseIdx === 0) {
-delay = 350;
+var prevType = chunk.type;
+if (prevType === 'question') delay = 500;
+else if (prevType === 'exclaim') delay = 450;
+else delay = 400;
 } else {
-delay = 150;
+delay = 120;
 }
 }
 if (delay > 0) {
@@ -6212,6 +6304,7 @@ speakNext();
 utterance.onerror = function(){
 if (readCancelled) return;
 readCancelled = true;
+speechSynthesis.cancel();
 btn.textContent = '朗读';
 btn.classList.remove('reading');
 progressBar.remove();
@@ -6231,7 +6324,7 @@ readCancelled = false;
 btn.textContent = '停止';
 btn.classList.add('reading');
 statusLabel.textContent = '朗读中 · ' + (bestVoice ? bestVoice.name : '默认') + ' 语音';
-speakNext();
+setTimeout(speakNext, 200);
 }
 
 function initReadAloud() {
@@ -6256,9 +6349,9 @@ if (typeof speechSynthesis === 'undefined') return;
 speechSynthesis.cancel();
 var utterance = new SpeechSynthesisUtterance(word);
 utterance.lang = 'en-US';
-utterance.rate = 0.85;
+utterance.rate = 0.9;
 utterance.pitch = 1.0;
-var voices = speechSynthesis.getVoices();
+var voices = loadVoices();
 var bestVoice = pickBestVoice(voices);
 if (bestVoice) utterance.voice = bestVoice;
 speechSynthesis.speak(utterance);
@@ -6334,17 +6427,23 @@ popup.appendChild(line);
 wordEl.style.position = 'relative';
 wordEl.style.display = 'inline-block';
 popup.addEventListener('click', function(ev){ ev.stopPropagation(); });
-var wordToSpeak = wordEl.textContent.trim();
 wordEl.appendChild(popup);
 speakWord(info.word);
-document.addEventListener('click', function closePopup(ev){
+if (window._currentClosePopup) {
+document.removeEventListener('click', window._currentClosePopup);
+window._currentClosePopup = null;
+}
+var closePopup = function(ev){
 if (!popup.contains(ev.target) && ev.target !== wordEl) {
 popup.remove();
 wordEl.style.display = '';
 wordEl.style.position = '';
 document.removeEventListener('click', closePopup);
+window._currentClosePopup = null;
 }
-}, { once: true });
+};
+window._currentClosePopup = closePopup;
+document.addEventListener('click', closePopup);
 });
 });
 });
@@ -6390,12 +6489,13 @@ return getStarredWords().indexOf(word) >= 0;
 }
 
 function updateMainCardStars() {
+var starred = getStarredWords();
 document.querySelectorAll('.vocab-card').forEach(function(card){
 var vw = card.querySelector('.vw');
 if (!vw) return;
 var word = vw.textContent.trim();
 var existing = card.querySelector('.vocab-card-star');
-if (isWordStarred(word)) {
+if (starred.indexOf(word) >= 0) {
 if (!existing) {
 var star = document.createElement('span');
 star.className = 'vocab-card-star';
@@ -6535,7 +6635,13 @@ makeFloatable(gameCard);
 
 updateDzRects();
 startFloatLoop();
-window.addEventListener('resize', updateDzRects);
+var _resizeTimer = null;
+function _debouncedUpdateDzRects() {
+if (_resizeTimer) clearTimeout(_resizeTimer);
+_resizeTimer = setTimeout(updateDzRects, 150);
+}
+window.addEventListener('resize', _debouncedUpdateDzRects);
+window._gameResizeHandler = _debouncedUpdateDzRects;
 }
 
 function startFloatLoop() {
@@ -6756,7 +6862,8 @@ if (floatReq) {
 cancelAnimationFrame(floatReq);
 floatReq = null;
 }
-window.removeEventListener('resize', updateDzRects);
+window.removeEventListener('resize', window._gameResizeHandler);
+window._gameResizeHandler = null;
 if (gameOverlay) {
 gameCards.forEach(function(card){
 if (card._cleanup) card._cleanup();
@@ -6970,9 +7077,6 @@ initWordJump();
 switchSet('set1', document.querySelectorAll('.set-btn')[0]);
 updateMainCardStars();
 });
-if (typeof speechSynthesis !== 'undefined') {
-speechSynthesis.onvoiceschanged = function(){};
-}
 </script>
 </body>
 </html>
