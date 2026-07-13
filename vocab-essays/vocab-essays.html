@@ -201,10 +201,6 @@ z-index:10}
 .game-dropzone {
 position:absolute;
 top:80px;
-left:50%;
-transform:translateX(-50%);
-width:240px;
-min-height:100px;
 border:2px dashed var(--accent);
 border-radius:12px;
 background:rgba(255,255,255,.5);
@@ -215,8 +211,30 @@ padding:.8rem;
 align-items:center;
 justify-content:center;
 z-index:5}
+.game-dropzone.familiar {
+left:calc(50% - 260px);
+transform:translateX(-50%);
+width:240px;
+min-height:100px}
+.game-dropzone.unfamiliar {
+left:calc(50% + 260px);
+transform:translateX(-50%);
+width:240px;
+min-height:100px;
+border-color:#e8a317}
+.game-zone-label {
+position:absolute;
+top:-22px;
+left:50%;
+transform:translateX(-50%);
+font-size:.75rem;
+font-weight:600;
+white-space:nowrap;
+color:var(--accent)}
+.game-dropzone.unfamiliar .game-zone-label {
+color:#e8a317}
 .game-dropzone.empty::before {
-content:'将漂浮的词卡拖到此处';
+content:'拖卡片到此处';
 position:absolute;
 top:45%;left:50%;
 transform:translate(-50%,-50%);
@@ -224,14 +242,20 @@ color:var(--muted);
 font-size:.85rem;
 white-space:nowrap}
 .game-dropzone.empty::after {
-content:'把卡片拖到这里来';
+content:'';
+display:none}
+.game-star {
 position:absolute;
-top:70%;left:50%;
-transform:translate(-50%,-50%);
-color:var(--muted);
-font-size:.72rem;
-white-space:nowrap;
-opacity:.8}
+top:-6px;
+right:-6px;
+width:18px;
+height:18px;
+font-size:14px;
+color:#e8a317;
+z-index:10;
+pointer-events:none;
+line-height:18px;
+text-align:center}
 .game-card {
 position:absolute;
 background:var(--bg2);
@@ -555,6 +579,20 @@ color:var(--ink)}
 animation:cardFlash 2s ease-out;
 border-left-color:var(--accent);
 box-shadow:0 0 0 2px var(--accent)}
+.vocab-card-star {
+position:absolute;
+top:-6px;
+right:-6px;
+width:18px;
+height:18px;
+font-size:14px;
+color:#e8a317;
+z-index:10;
+pointer-events:none;
+line-height:18px;
+text-align:center}
+.vocab-card {
+position:relative}
 @keyframes cardFlash {
 0%{background:var(--accent-soft);transform:scale(1.08)}
 15%{background:var(--accent-soft);transform:scale(1.05)}
@@ -713,12 +751,22 @@ padding:.35rem .7rem}
 @media(min-width:601px) and (max-width:900px) {
 .vocab-grid {
 grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
-.game-dropzone {
-width:180px}
+.game-dropzone.familiar {
+left:calc(50% - 160px);
+width:200px}
+.game-dropzone.unfamiliar {
+left:calc(50% + 160px);
+width:200px}
 }
 @media(max-width:600px) {
-.game-dropzone {
-width:200px;
+.game-dropzone.familiar {
+left:calc(50% - 110px);
+width:170px;
+min-height:90px;
+top:70px}
+.game-dropzone.unfamiliar {
+left:calc(50% + 110px);
+width:170px;
 min-height:90px;
 top:70px}
 .game-header {
@@ -753,9 +801,14 @@ font-size:.62rem;
 padding:.2rem .45rem}
 }
 @media(max-width:380px) {
-.game-dropzone {
-width:170px;
-min-height:80px}
+.game-dropzone.familiar {
+left:calc(50% - 90px);
+width:150px;
+min-height:70px}
+.game-dropzone.unfamiliar {
+left:calc(50% + 90px);
+width:150px;
+min-height:70px}
 .game-btn {
 font-size:.58rem;
 padding:.15rem .35rem}
@@ -6294,17 +6347,67 @@ document.removeEventListener('click', closePopup);
 }
 
 var gameOverlay = null;
-var gameDropzone = null;
+var gameDropzones = [];
 var gameCards = [];
 var gameDroppedCount = 0;
 var floatCards = [];
 var floatReq = null;
 var CARD_W = 150;
 var CARD_H = 80;
-var cachedDzRect = null;
+var cachedDzRects = [];
 
-function updateDzRect() {
-cachedDzRect = gameDropzone ? gameDropzone.getBoundingClientRect() : null;
+function getStarredWords() {
+try {
+return JSON.parse(localStorage.getItem('starredWords') || '[]');
+} catch(e) {
+return [];
+}
+}
+
+function setStarredWords(arr) {
+try {
+localStorage.setItem('starredWords', JSON.stringify(arr));
+} catch(e) {}
+}
+
+function toggleStarWord(word, add) {
+var starred = getStarredWords();
+var idx = starred.indexOf(word);
+if (add && idx < 0) {
+starred.push(word);
+} else if (!add && idx >= 0) {
+starred.splice(idx, 1);
+}
+setStarredWords(starred);
+}
+
+function isWordStarred(word) {
+return getStarredWords().indexOf(word) >= 0;
+}
+
+function updateMainCardStars() {
+document.querySelectorAll('.vocab-card').forEach(function(card){
+var vw = card.querySelector('.vw');
+if (!vw) return;
+var word = vw.textContent.trim();
+var existing = card.querySelector('.vocab-card-star');
+if (isWordStarred(word)) {
+if (!existing) {
+var star = document.createElement('span');
+star.className = 'vocab-card-star';
+star.textContent = '\u2605';
+card.appendChild(star);
+}
+} else if (existing) {
+existing.remove();
+}
+});
+}
+
+function updateDzRects() {
+cachedDzRects = gameDropzones.map(function(dz){
+return dz ? dz.getBoundingClientRect() : null;
+});
 }
 
 function startGame(section) {
@@ -6336,9 +6439,24 @@ header.appendChild(progress);
 header.appendChild(exitBtn);
 gameOverlay.appendChild(header);
 
-gameDropzone = document.createElement('div');
-gameDropzone.className = 'game-dropzone empty';
-gameOverlay.appendChild(gameDropzone);
+gameDropzones = [];
+var dzFamiliar = document.createElement('div');
+dzFamiliar.className = 'game-dropzone familiar empty';
+var labelF = document.createElement('span');
+labelF.className = 'game-zone-label';
+labelF.textContent = '比较认识';
+dzFamiliar.appendChild(labelF);
+gameOverlay.appendChild(dzFamiliar);
+gameDropzones.push(dzFamiliar);
+
+var dzUnfamiliar = document.createElement('div');
+dzUnfamiliar.className = 'game-dropzone unfamiliar empty';
+var labelU = document.createElement('span');
+labelU.className = 'game-zone-label';
+labelU.textContent = '不太认识';
+dzUnfamiliar.appendChild(labelU);
+gameOverlay.appendChild(dzUnfamiliar);
+gameDropzones.push(dzUnfamiliar);
 
 document.body.appendChild(gameOverlay);
 
@@ -6358,6 +6476,9 @@ var gameCard = document.createElement('div');
 gameCard.className = 'game-card floating';
 gameCard.dataset.idx = idx;
 
+var word = vw.textContent.trim();
+gameCard.dataset.word = word;
+
 var inner = document.createElement('div');
 inner.className = 'card-inner';
 var front = document.createElement('div');
@@ -6374,6 +6495,13 @@ if (vm) back.appendChild(vm.cloneNode(true));
 inner.appendChild(front);
 inner.appendChild(back);
 gameCard.appendChild(inner);
+
+if (isWordStarred(word)) {
+var star = document.createElement('span');
+star.className = 'game-star';
+star.textContent = '\u2605';
+gameCard.appendChild(star);
+}
 
 var cardW = CARD_W;
 var cardH = CARD_H;
@@ -6401,9 +6529,9 @@ gameCards.push(gameCard);
 makeFloatable(gameCard);
 });
 
-updateDzRect();
+updateDzRects();
 startFloatLoop();
-window.addEventListener('resize', updateDzRect);
+window.addEventListener('resize', updateDzRects);
 }
 
 function startFloatLoop() {
@@ -6426,7 +6554,7 @@ vy: (Math.random() - 0.5) * 1.2
 function step() {
 var w = window.innerWidth;
 var h = window.innerHeight;
-var dz = cachedDzRect;
+var dzList = cachedDzRects;
 floatCards.forEach(function(card){
 if (card.classList.contains('dragging') || card.classList.contains('dropped')) return;
 var s = card.floatState;
@@ -6436,7 +6564,9 @@ if (s.x <= 0) { s.x = 0; s.vx = Math.abs(s.vx); }
 if (s.x >= w - CARD_W) { s.x = w - CARD_W; s.vx = -Math.abs(s.vx); }
 if (s.y <= 0) { s.y = 0; s.vy = Math.abs(s.vy); }
 if (s.y >= h - CARD_H) { s.y = h - CARD_H; s.vy = -Math.abs(s.vy); }
-if (dz && s.x + CARD_W > dz.left && s.x < dz.right &&
+dzList.forEach(function(dz){
+if (!dz) return;
+if (s.x + CARD_W > dz.left && s.x < dz.right &&
 s.y + CARD_H > dz.top && s.y < dz.bottom) {
 if (s.vx > 0 && s.x + CARD_W > dz.left && s.x < dz.left) {
 s.vx = -Math.abs(s.vx);
@@ -6451,6 +6581,7 @@ if (s.vy < 0 && s.y < dz.bottom && s.y + CARD_H > dz.bottom) {
 s.vy = Math.abs(s.vy);
 }
 }
+});
 card.style.transform = 'translate3d(' + s.x + 'px,' + s.y + 'px,0)';
 });
 floatReq = requestAnimationFrame(step);
@@ -6509,10 +6640,16 @@ document.removeEventListener('mouseup', onEnd);
 document.removeEventListener('touchmove', onMove);
 document.removeEventListener('touchend', onEnd);
 var cardRect = card.getBoundingClientRect();
-var dzRect = gameDropzone.getBoundingClientRect();
+var targetDz = null;
+gameDropzones.forEach(function(dz){
+var dzRect = dz.getBoundingClientRect();
 if (cardRect.left < dzRect.right && cardRect.right > dzRect.left &&
 cardRect.top < dzRect.bottom && cardRect.bottom > dzRect.top) {
-dropCard(card);
+targetDz = dz;
+}
+});
+if (targetDz) {
+dropCard(card, targetDz);
 } else {
 card.classList.add('floating');
 if (!card.floatState) {
@@ -6541,19 +6678,37 @@ document.removeEventListener('touchend', onEnd);
 };
 }
 
-function dropCard(card) {
-if (gameDropzone.currentCard && gameDropzone.currentCard !== card) {
-removeDroppedCard(gameDropzone.currentCard);
+function dropCard(card, targetDz) {
+if (targetDz.currentCard && targetDz.currentCard !== card) {
+removeDroppedCard(targetDz.currentCard);
 }
 card.classList.remove('floating');
 card.classList.add('dropped');
 card.style.transform = '';
 card.style.position = 'relative';
-gameDropzone.classList.remove('empty');
-gameDropzone.appendChild(card);
-gameDropzone.currentCard = card;
+targetDz.classList.remove('empty');
+targetDz.appendChild(card);
+targetDz.currentCard = card;
 var idx = floatCards.indexOf(card);
 if (idx >= 0) floatCards.splice(idx, 1);
+
+var word = card.dataset.word || '';
+var isUnfamiliar = targetDz.classList.contains('unfamiliar');
+if (isUnfamiliar) {
+toggleStarWord(word, true);
+var existingStar = card.querySelector('.game-star');
+if (!existingStar) {
+var star = document.createElement('span');
+star.className = 'game-star';
+star.textContent = '\u2605';
+card.appendChild(star);
+}
+} else {
+toggleStarWord(word, false);
+var existingStar = card.querySelector('.game-star');
+if (existingStar) existingStar.remove();
+}
+updateMainCardStars();
 
 if (card._dropClickHandler) {
 card.removeEventListener('click', card._dropClickHandler);
@@ -6580,12 +6735,15 @@ if (progress) progress.textContent = '已收集 ' + gameDroppedCount + ' / ' + g
 }
 
 function removeDroppedCard(card) {
+var parentDz = card.parentElement;
 card.remove();
-if (gameDropzone.currentCard === card) {
-gameDropzone.currentCard = null;
+if (parentDz) {
+if (parentDz.currentCard === card) {
+parentDz.currentCard = null;
 }
-if (gameDropzone.children.length === 0) {
-gameDropzone.classList.add('empty');
+if (parentDz.children.length === 0) {
+parentDz.classList.add('empty');
+}
 }
 }
 
@@ -6594,18 +6752,18 @@ if (floatReq) {
 cancelAnimationFrame(floatReq);
 floatReq = null;
 }
-window.removeEventListener('resize', updateDzRect);
+window.removeEventListener('resize', updateDzRects);
 if (gameOverlay) {
 gameCards.forEach(function(card){
 if (card._cleanup) card._cleanup();
 });
 gameOverlay.remove();
 gameOverlay = null;
-gameDropzone = null;
+gameDropzones = [];
 gameCards = [];
 gameDroppedCount = 0;
 floatCards = [];
-cachedDzRect = null;
+cachedDzRects = [];
 }
 }
 
@@ -6806,6 +6964,7 @@ initParaFlip();
 initReadAloud();
 initWordJump();
 switchSet('set1', document.querySelectorAll('.set-btn')[0]);
+updateMainCardStars();
 });
 if (typeof speechSynthesis !== 'undefined') {
 speechSynthesis.onvoiceschanged = function(){};
