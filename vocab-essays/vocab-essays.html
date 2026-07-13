@@ -221,7 +221,7 @@ left:calc(50% + 260px);
 transform:translateX(-50%);
 width:240px;
 min-height:100px;
-border-color:#e8a317}
+border-color:var(--accent2)}
 .game-zone-label {
 position:absolute;
 top:-22px;
@@ -232,7 +232,7 @@ font-weight:600;
 white-space:nowrap;
 color:var(--accent)}
 .game-dropzone.unfamiliar .game-zone-label {
-color:#e8a317}
+color:var(--accent2)}
 .game-dropzone.empty::before {
 content:'拖卡片到此处';
 position:absolute;
@@ -251,7 +251,7 @@ right:-6px;
 width:18px;
 height:18px;
 font-size:14px;
-color:#e8a317;
+color:var(--accent2);
 z-index:10;
 pointer-events:none;
 line-height:18px;
@@ -586,7 +586,7 @@ right:-6px;
 width:18px;
 height:18px;
 font-size:14px;
-color:#e8a317;
+color:var(--accent2);
 z-index:10;
 pointer-events:none;
 line-height:18px;
@@ -5924,6 +5924,7 @@ var set7Meta = '第七份 · 3列86词 · 在阅读中记忆单词 · 目标词�
 var navMap = { set1: set1Nav, set2: set2Nav, set3: set3Nav, set4: set4Nav, set5: set5Nav, set6: set6Nav, set7: set7Nav };
 var metaMap = { set1: set1Meta, set2: set2Meta, set3: set3Meta, set4: set4Meta, set5: set5Meta, set6: set6Meta, set7: set7Meta };
 function switchSet(setId, btn) {
+if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
 if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
 if (currentBlock) unwrapWords(currentBlock);
 resetReadButtons();
@@ -5946,9 +5947,12 @@ document.getElementById('setMeta').textContent = metaMap[setId] || set1Meta;
 var currentBtn = null;
 var currentBlock = null;
 var readCancelled = false;
+var _currentClosePopup = null;
+var _readTimer = null;
 
 function resetReadButtons() {
 readCancelled = true;
+if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
 document.querySelectorAll('.read-btn').forEach(function(b){
 b.textContent = '朗读';
 b.classList.remove('reading');
@@ -6295,7 +6299,7 @@ delay = 120;
 }
 }
 if (delay > 0) {
-setTimeout(speakNext, delay);
+_readTimer = setTimeout(speakNext, delay);
 } else {
 speakNext();
 }
@@ -6304,6 +6308,7 @@ speakNext();
 utterance.onerror = function(){
 if (readCancelled) return;
 readCancelled = true;
+if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
 speechSynthesis.cancel();
 btn.textContent = '朗读';
 btn.classList.remove('reading');
@@ -6321,10 +6326,11 @@ speechSynthesis.speak(utterance);
 currentBtn = btn;
 currentBlock = block;
 readCancelled = false;
+if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
 btn.textContent = '停止';
 btn.classList.add('reading');
 statusLabel.textContent = '朗读中 · ' + (bestVoice ? bestVoice.name : '默认') + ' 语音';
-setTimeout(speakNext, 200);
+_readTimer = setTimeout(speakNext, 200);
 }
 
 function initReadAloud() {
@@ -6429,9 +6435,9 @@ wordEl.style.display = 'inline-block';
 popup.addEventListener('click', function(ev){ ev.stopPropagation(); });
 wordEl.appendChild(popup);
 speakWord(info.word);
-if (window._currentClosePopup) {
-document.removeEventListener('click', window._currentClosePopup);
-window._currentClosePopup = null;
+if (_currentClosePopup) {
+document.removeEventListener('click', _currentClosePopup);
+_currentClosePopup = null;
 }
 var closePopup = function(ev){
 if (!popup.contains(ev.target) && ev.target !== wordEl) {
@@ -6439,10 +6445,10 @@ popup.remove();
 wordEl.style.display = '';
 wordEl.style.position = '';
 document.removeEventListener('click', closePopup);
-window._currentClosePopup = null;
+_currentClosePopup = null;
 }
 };
-window._currentClosePopup = closePopup;
+_currentClosePopup = closePopup;
 document.addEventListener('click', closePopup);
 });
 });
