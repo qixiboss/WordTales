@@ -6334,8 +6334,9 @@ popup.appendChild(line);
 wordEl.style.position = 'relative';
 wordEl.style.display = 'inline-block';
 popup.addEventListener('click', function(ev){ ev.stopPropagation(); });
+var wordToSpeak = wordEl.textContent.trim();
 wordEl.appendChild(popup);
-speakWord(wordEl.textContent.trim());
+speakWord(info.word);
 document.addEventListener('click', function closePopup(ev){
 if (!popup.contains(ev.target) && ev.target !== wordEl) {
 popup.remove();
