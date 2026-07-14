@@ -7158,10 +7158,12 @@ return false;
 }
 
 var _copyCardMap = null;
+var _copySection = null;
 
 function buildCopyCardMap() {
 var map = {};
-document.querySelectorAll('.vocab-card').forEach(function(card){
+if (!_copySection) return map;
+_copySection.querySelectorAll('.vocab-card').forEach(function(card){
 var vw = card.querySelector('.vw');
 if (!vw) return;
 var key = vw.textContent.trim().toLowerCase();
@@ -7182,12 +7184,22 @@ return _copyCardMap[word.toLowerCase()] || '';
 
 function startCopy(section) {
 _copyCardMap = null;
+_copySection = section;
 var starred = getStarredWords();
-if (starred.length === 0) {
+var sectionWords = [];
+if (section) {
+section.querySelectorAll('.vocab-card .vw').forEach(function(vw){
+sectionWords.push(vw.textContent.trim().toLowerCase());
+});
+}
+var sectionStarred = starred.filter(function(w){
+return sectionWords.indexOf(w.toLowerCase()) >= 0;
+});
+if (sectionStarred.length === 0) {
 showCopyAlert(section);
 return;
 }
-copyWordList = starred.slice();
+copyWordList = sectionStarred.slice();
 shuffleArray(copyWordList);
 copyIdx = 0;
 if (isMobile()) {
@@ -7210,7 +7222,7 @@ title.className = 'copy-alert-title';
 title.textContent = '还没有标记的单词';
 var desc = document.createElement('div');
 desc.className = 'copy-alert-desc';
-desc.textContent = '去游戏模式中，把不太认识的单词拖入"不太认识"框，标记五角星后再来抄写练习吧！';
+desc.textContent = '当前列还没有标记的单词，去游戏模式中把不太认识的单词拖入"不太认识"框，标记五角星后再来抄写练习吧！';
 var actions = document.createElement('div');
 actions.className = 'copy-alert-actions';
 var goGame = document.createElement('button');
