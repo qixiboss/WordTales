@@ -240,6 +240,12 @@ color:var(--ink);
 letter-spacing:.05em;
 margin-bottom:.5rem;
 text-align:center}
+.copy-word-meaning {
+font-size:1.1rem;
+color:var(--muted);
+margin-bottom:.5rem;
+text-align:center;
+font-family:var(--sans)}
 .copy-word-hint {
 font-size:.85rem;
 color:var(--muted);
@@ -291,6 +297,15 @@ font-size:4rem;
 font-weight:700;
 color:rgba(27,94,114,.15);
 letter-spacing:.05em;
+pointer-events:none;
+white-space:nowrap}
+.copy-canvas-meaning {
+position:absolute;
+top:calc(50% + 3rem);left:50%;
+transform:translateX(-50%);
+font-family:var(--sans);
+font-size:1.2rem;
+color:rgba(27,94,114,.12);
 pointer-events:none;
 white-space:nowrap}
 .copy-canvas-next {
@@ -7131,6 +7146,23 @@ if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 0) return tr
 return false;
 }
 
+function getWordMeaning(word) {
+var cards = document.querySelectorAll('.vocab-card');
+var key = word.toLowerCase();
+for (var i = 0; i < cards.length; i++) {
+var vw = cards[i].querySelector('.vw');
+if (vw && vw.textContent.trim().toLowerCase() === key) {
+var vp = cards[i].querySelector('.vp');
+var vm = cards[i].querySelector('.vm');
+var pos = vp ? vp.textContent.trim() : '';
+var meaning = vm ? vm.textContent.trim() : '';
+if (pos && meaning) return pos + ' ' + meaning;
+return meaning || pos || '';
+}
+}
+return '';
+}
+
 function startCopy(section) {
 var starred = getStarredWords();
 if (starred.length === 0) {
@@ -7224,6 +7256,10 @@ var wordDisplay = document.createElement('div');
 wordDisplay.className = 'copy-word-display';
 overlay.appendChild(wordDisplay);
 
+var meaningDisplay = document.createElement('div');
+meaningDisplay.className = 'copy-word-meaning';
+overlay.appendChild(meaningDisplay);
+
 var hint = document.createElement('div');
 hint.className = 'copy-word-hint';
 hint.textContent = '看着单词，在下方输入框中打出这个单词，按回车切换下一个';
@@ -7239,6 +7275,7 @@ input.setAttribute('spellcheck', 'false');
 overlay.appendChild(input);
 overlay._input = input;
 overlay._wordDisplay = wordDisplay;
+overlay._meaningDisplay = meaningDisplay;
 
 showCopyWord();
 
@@ -7282,6 +7319,9 @@ function showCopyWord() {
 if (!copyOverlay) return;
 var word = copyWordList[copyIdx];
 copyOverlay._wordDisplay.textContent = word;
+if (copyOverlay._meaningDisplay) {
+copyOverlay._meaningDisplay.textContent = getWordMeaning(word);
+}
 copyOverlay._input.value = '';
 copyOverlay._progress.textContent = (copyIdx + 1) + ' / ' + copyWordList.length;
 copyOverlay._input.focus();
@@ -7337,16 +7377,21 @@ var wordHint = document.createElement('div');
 wordHint.className = 'copy-canvas-word';
 canvasWrap.appendChild(wordHint);
 
+var meaningHint = document.createElement('div');
+meaningHint.className = 'copy-canvas-meaning';
+canvasWrap.appendChild(meaningHint);
+
 var nextBtn = document.createElement('button');
 nextBtn.className = 'copy-canvas-next';
 nextBtn.textContent = '\u2192 下一个';
 nextBtn.addEventListener('click', function(){
 copyIdx++;
 if (copyIdx >= copyWordList.length) {
-showCopyComplete(false, copyCtx, canvas, wordHint);
+showCopyComplete(false, copyCtx, canvas, wordHint, meaningHint);
 } else {
 copyCtx.clearRect(0, 0, canvas.width, canvas.height);
 wordHint.textContent = copyWordList[copyIdx];
+meaningHint.textContent = getWordMeaning(copyWordList[copyIdx]);
 copyOverlay._progress.textContent = (copyIdx + 1) + ' / ' + copyWordList.length;
 }
 });
@@ -7362,6 +7407,7 @@ copyCtx.lineCap = 'round';
 copyCtx.lineJoin = 'round';
 
 wordHint.textContent = copyWordList[copyIdx];
+meaningHint.textContent = getWordMeaning(copyWordList[copyIdx]);
 
 function getPos(e) {
 var rect = canvas.getBoundingClientRect();
@@ -7416,7 +7462,7 @@ copyCtx.lineJoin = 'round';
 window.addEventListener('resize', copyCanvasResizeHandler);
 }
 
-function showCopyComplete(isDesktop, copyCtx, canvas, wordHint) {
+function showCopyComplete(isDesktop, copyCtx, canvas, wordHint, meaningHint) {
 if (!copyOverlay) return;
 copyOverlay._completed = true;
 var box = document.createElement('div');
@@ -7445,6 +7491,7 @@ copyIdx = 0;
 shuffleArray(copyWordList);
 copyCtx.clearRect(0, 0, canvas.width, canvas.height);
 wordHint.textContent = copyWordList[copyIdx];
+meaningHint.textContent = getWordMeaning(copyWordList[copyIdx]);
 copyOverlay._progress.textContent = (copyIdx + 1) + ' / ' + copyWordList.length;
 });
 box.appendChild(restartBtn);
