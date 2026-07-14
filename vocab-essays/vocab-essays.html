@@ -229,7 +229,7 @@ background:transparent;
 color:var(--accent2);
 cursor:pointer;
 font-family:var(--sans)}
-.copy-exit:hover {
+.copy-exit:hover,.copy-exit:active {
 background:var(--accent2);
 color:#fff}
 .copy-word-display {
@@ -322,7 +322,7 @@ color:#fff;
 cursor:pointer;
 font-family:var(--sans);
 z-index:20}
-.copy-canvas-next:hover {
+.copy-canvas-next:hover,.copy-canvas-next:active {
 background:#8b6914}
 .copy-rotate-hint {
 display:none;
@@ -378,7 +378,7 @@ background:var(--accent2);
 color:#fff;
 cursor:pointer;
 font-family:var(--sans)}
-.copy-complete-btn:hover {
+.copy-complete-btn:hover,.copy-complete-btn:active {
 background:#8b6914}
 .copy-alert-mask {
 position:fixed;
@@ -425,7 +425,7 @@ font-family:var(--sans)}
 border:2px solid var(--accent2);
 background:var(--accent2);
 color:#fff}
-.copy-alert-btn.primary:hover {
+.copy-alert-btn.primary:hover,.copy-alert-btn.primary:active {
 background:#8b6914}
 .copy-alert-btn.secondary {
 border:2px solid var(--muted);
@@ -980,28 +980,6 @@ padding:.08rem .35rem}
 font-size:.65rem}
 .cover {
 padding:3rem 1.2rem 2rem}
-}
-@media(max-width:380px) {
-.vocab-grid {
-grid-template-columns:1fr}
-.flip-toggle button {
-font-size:.58rem;
-padding:.15rem .35rem}
-.set-btn {
-font-size:.72rem;
-padding:.35rem .7rem}
-}
-@media(min-width:601px) and (max-width:900px) {
-.vocab-grid {
-grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
-.game-dropzone.familiar {
-left:calc(50% - 160px);
-width:200px}
-.game-dropzone.unfamiliar {
-left:calc(50% + 160px);
-width:200px}
-}
-@media(max-width:600px) {
 .game-dropzone.familiar {
 left:calc(50% - 110px);
 width:170px;
@@ -1047,6 +1025,26 @@ font-size:.62rem;
 padding:.2rem .45rem}
 }
 @media(max-width:380px) {
+.vocab-grid {
+grid-template-columns:1fr}
+.flip-toggle button {
+font-size:.58rem;
+padding:.15rem .35rem}
+.set-btn {
+font-size:.72rem;
+padding:.35rem .7rem}
+}
+@media(min-width:601px) and (max-width:900px) {
+.vocab-grid {
+grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.game-dropzone.familiar {
+left:calc(50% - 160px);
+width:200px}
+.game-dropzone.unfamiliar {
+left:calc(50% + 160px);
+width:200px}
+}
+@media(max-width:380px) {
 .game-dropzone.familiar {
 left:calc(50% - 90px);
 width:150px;
@@ -1085,13 +1083,13 @@ display:none}
 <p class="kicker">Vocabulary in Context</p>
 <h1>词汇记忆短文集</h1>
 <div class="set-switcher">
-<button class="set-btn active" onclick="switchSet('set1', this)">第一份 · 4列131词</button>
-<button class="set-btn" onclick="switchSet('set2', this)">第二份 · 4列114词</button>
-<button class="set-btn" onclick="switchSet('set3', this)">第三份 · 5列169词</button>
-<button class="set-btn" onclick="switchSet('set4', this)">第四份 · 4列130词</button>
-<button class="set-btn" onclick="switchSet('set5', this)">第五份 · 4列136词</button>
-<button class="set-btn" onclick="switchSet('set6', this)">第六份 · 4列130词</button>
-<button class="set-btn" onclick="switchSet('set7', this)">第七份 · 3列86词</button>
+<button class="set-btn active" data-set="set1">第一份 · 4列131词</button>
+<button class="set-btn" data-set="set2">第二份 · 4列114词</button>
+<button class="set-btn" data-set="set3">第三份 · 5列169词</button>
+<button class="set-btn" data-set="set4">第四份 · 4列130词</button>
+<button class="set-btn" data-set="set5">第五份 · 4列136词</button>
+<button class="set-btn" data-set="set6">第六份 · 4列130词</button>
+<button class="set-btn" data-set="set7">第七份 · 3列86词</button>
 </div>
 <p class="set-meta" id="setMeta">在阅读中记忆单词 · 目标词高亮标注 · 点击上方按钮切换</p>
 </div>
@@ -6421,39 +6419,49 @@ return null;
 
 var chunkIdx = 0;
 
+var PROSODY = {
+QUESTION_PITCH: 1.15, QUESTION_RATE: 0.90,
+EXCLAIM_PITCH: 1.10, EXCLAIM_RATE: 0.98,
+STATEMENT_PITCH: 1.0, STATEMENT_RATE: 0.95,
+NON_LAST_PITCH_BOOST: 0.04, NON_LAST_RATE_BOOST: 0.02,
+LAST_PITCH_DROP: 0.03, LAST_RATE_DROP: 0.02,
+LONG_SENTENCE_RATE_DROP: 0.04,
+SHORT_SENTENCE_RATE_BOOST: 0.04, SHORT_SENTENCE_PITCH_BOOST: 0.03,
+LONG_WORD_THRESHOLD: 12, SHORT_WORD_THRESHOLD: 5,
+PITCH_MIN: 0.85, PITCH_MAX: 1.25,
+RATE_MIN: 0.80, RATE_MAX: 1.05
+};
+
 function getProsody(chunk) {
-var pitch = 1.0;
-var rate = 0.95;
+var pitch = PROSODY.STATEMENT_PITCH;
+var rate = PROSODY.STATEMENT_RATE;
 var wordCount = chunk.text.split(/\s+/).length;
 
 if (chunk.type === 'question') {
-pitch = 1.15;
-rate = 0.90;
+pitch = PROSODY.QUESTION_PITCH;
+rate = PROSODY.QUESTION_RATE;
 } else if (chunk.type === 'exclaim') {
-pitch = 1.10;
-rate = 0.98;
-} else {
-pitch = 1.0;
-rate = 0.95;
+pitch = PROSODY.EXCLAIM_PITCH;
+rate = PROSODY.EXCLAIM_RATE;
 }
 
 if (!chunk.isLastClause) {
-pitch += 0.04;
-rate += 0.02;
+pitch += PROSODY.NON_LAST_PITCH_BOOST;
+rate += PROSODY.NON_LAST_RATE_BOOST;
 } else {
-pitch -= 0.03;
-rate -= 0.02;
+pitch -= PROSODY.LAST_PITCH_DROP;
+rate -= PROSODY.LAST_RATE_DROP;
 }
 
-if (wordCount > 12) {
-rate -= 0.04;
-} else if (wordCount < 5) {
-rate += 0.04;
-pitch += 0.03;
+if (wordCount > PROSODY.LONG_WORD_THRESHOLD) {
+rate -= PROSODY.LONG_SENTENCE_RATE_DROP;
+} else if (wordCount < PROSODY.SHORT_WORD_THRESHOLD) {
+rate += PROSODY.SHORT_SENTENCE_RATE_BOOST;
+pitch += PROSODY.SHORT_SENTENCE_PITCH_BOOST;
 }
 
-pitch = Math.max(0.85, Math.min(1.25, pitch));
-rate = Math.max(0.80, Math.min(1.05, rate));
+pitch = Math.max(PROSODY.PITCH_MIN, Math.min(PROSODY.PITCH_MAX, pitch));
+rate = Math.max(PROSODY.RATE_MIN, Math.min(PROSODY.RATE_MAX, rate));
 
 return { pitch: pitch, rate: rate };
 }
@@ -6466,7 +6474,7 @@ btn.classList.remove('reading');
 progressFill.style.width = '100%';
 statusLabel.textContent = '朗读完毕 · 共 ' + tokenCount + ' 词';
 clearHighlight();
-setTimeout(function(){
+_readTimer = setTimeout(function(){
 if (!readCancelled) {
 progressBar.remove();
 statusLabel.remove();
@@ -6707,6 +6715,7 @@ var floatReq = null;
 var CARD_W = 150;
 var CARD_H = 80;
 var cachedDzRects = [];
+var gameResizeHandler = null;
 
 function getStarredWords() {
 try {
@@ -6786,6 +6795,7 @@ progress.textContent = '已收集 0 / ' + cards.length;
 var exitBtn = document.createElement('button');
 exitBtn.className = 'game-exit';
 exitBtn.textContent = '退出游戏';
+exitBtn.setAttribute('aria-label', '退出游戏模式');
 exitBtn.addEventListener('click', endGame);
 header.appendChild(title);
 header.appendChild(progress);
@@ -6890,7 +6900,7 @@ if (_resizeTimer) clearTimeout(_resizeTimer);
 _resizeTimer = setTimeout(updateDzRects, 150);
 }
 window.addEventListener('resize', _debouncedUpdateDzRects);
-window._gameResizeHandler = _debouncedUpdateDzRects;
+gameResizeHandler = _debouncedUpdateDzRects;
 }
 
 function startFloatLoop() {
@@ -7094,6 +7104,7 @@ if (progress) progress.textContent = '已收集 ' + gameDroppedCount + ' / ' + g
 }
 
 function removeDroppedCard(card) {
+if (card._cleanup) card._cleanup();
 var parentDz = card.parentElement;
 card.remove();
 if (parentDz) {
@@ -7111,8 +7122,8 @@ if (floatReq) {
 cancelAnimationFrame(floatReq);
 floatReq = null;
 }
-window.removeEventListener('resize', window._gameResizeHandler);
-window._gameResizeHandler = null;
+window.removeEventListener('resize', gameResizeHandler);
+gameResizeHandler = null;
 if (gameOverlay) {
 gameCards.forEach(function(card){
 if (card._cleanup) card._cleanup();
@@ -7146,24 +7157,31 @@ if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 0) return tr
 return false;
 }
 
-function getWordMeaning(word) {
-var cards = document.querySelectorAll('.vocab-card');
-var key = word.toLowerCase();
-for (var i = 0; i < cards.length; i++) {
-var vw = cards[i].querySelector('.vw');
-if (vw && vw.textContent.trim().toLowerCase() === key) {
-var vp = cards[i].querySelector('.vp');
-var vm = cards[i].querySelector('.vm');
+var _copyCardMap = null;
+
+function buildCopyCardMap() {
+var map = {};
+document.querySelectorAll('.vocab-card').forEach(function(card){
+var vw = card.querySelector('.vw');
+if (!vw) return;
+var key = vw.textContent.trim().toLowerCase();
+if (map[key]) return;
+var vp = card.querySelector('.vp');
+var vm = card.querySelector('.vm');
 var pos = vp ? vp.textContent.trim() : '';
 var meaning = vm ? vm.textContent.trim() : '';
-if (pos && meaning) return pos + ' ' + meaning;
-return meaning || pos || '';
+map[key] = (pos && meaning) ? pos + ' ' + meaning : (meaning || pos || '');
+});
+return map;
 }
-}
-return '';
+
+function getWordMeaning(word) {
+if (!_copyCardMap) _copyCardMap = buildCopyCardMap();
+return _copyCardMap[word.toLowerCase()] || '';
 }
 
 function startCopy(section) {
+_copyCardMap = null;
 var starred = getStarredWords();
 if (starred.length === 0) {
 showCopyAlert(section);
@@ -7239,6 +7257,7 @@ progress.textContent = '1 / ' + copyWordList.length;
 var exitBtn = document.createElement('button');
 exitBtn.className = 'copy-exit';
 exitBtn.textContent = '退出';
+exitBtn.setAttribute('aria-label', '退出抄写模式');
 exitBtn.addEventListener('click', endCopy);
 header.appendChild(title);
 header.appendChild(progress);
@@ -7353,9 +7372,13 @@ setupCanvas();
 }
 }
 
-copyOrientationHandler = checkOrientation;
-window.addEventListener('resize', checkOrientation);
-window.addEventListener('orientationchange', checkOrientation);
+copyOrientationHandler = function() {
+var _t = copyOrientationHandler._timer;
+if (_t) clearTimeout(_t);
+copyOrientationHandler._timer = setTimeout(checkOrientation, 200);
+};
+window.addEventListener('resize', copyOrientationHandler);
+window.addEventListener('orientationchange', copyOrientationHandler);
 checkOrientation();
 }
 
@@ -7369,6 +7392,8 @@ canvasWrap.className = 'copy-canvas-wrap active';
 
 var canvas = document.createElement('canvas');
 canvas.id = 'copyCanvas';
+canvas.setAttribute('role', 'img');
+canvas.setAttribute('aria-label', '手写画板，在此书写单词');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 canvasWrap.appendChild(canvas);
@@ -7450,14 +7475,33 @@ canvas.addEventListener('touchstart', onStart, { passive: false });
 canvas.addEventListener('touchmove', onMove, { passive: false });
 canvas.addEventListener('touchend', onEnd, { passive: false });
 
+canvas._copyListeners = [
+{ type: 'mousedown', fn: onStart },
+{ type: 'mousemove', fn: onMove },
+{ type: 'mouseup', fn: onEnd },
+{ type: 'mouseleave', fn: onEnd },
+{ type: 'touchstart', fn: onStart, opts: { passive: false } },
+{ type: 'touchmove', fn: onMove, opts: { passive: false } },
+{ type: 'touchend', fn: onEnd, opts: { passive: false } }
+];
+
+var _copyResizeTimer = null;
 copyCanvasResizeHandler = function() {
+if (_copyResizeTimer) clearTimeout(_copyResizeTimer);
+_copyResizeTimer = setTimeout(function() {
 if (!copyOverlay) return;
+var imgData = null;
+try { imgData = copyCtx.getImageData(0, 0, canvas.width, canvas.height); } catch(e) {}
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 copyCtx.strokeStyle = '#1b5e72';
 copyCtx.lineWidth = 3;
 copyCtx.lineCap = 'round';
 copyCtx.lineJoin = 'round';
+if (imgData) {
+try { copyCtx.putImageData(imgData, 0, 0); } catch(e) {}
+}
+}, 150);
 };
 window.addEventListener('resize', copyCanvasResizeHandler);
 }
@@ -7510,6 +7554,13 @@ window.removeEventListener('resize', copyCanvasResizeHandler);
 copyCanvasResizeHandler = null;
 }
 if (copyOverlay) {
+var canvas = copyOverlay.querySelector('#copyCanvas');
+if (canvas && canvas._copyListeners) {
+canvas._copyListeners.forEach(function(item){
+canvas.removeEventListener(item.type, item.fn, item.opts);
+});
+canvas._copyListeners = null;
+}
 copyOverlay.remove();
 copyOverlay = null;
 }
@@ -7659,6 +7710,9 @@ while (card.firstChild) card.removeChild(card.firstChild);
 inner.appendChild(front);
 inner.appendChild(back);
 card.appendChild(inner);
+card.setAttribute('role', 'button');
+card.setAttribute('tabindex', '0');
+card.setAttribute('aria-label', '单词卡片，点击翻转');
 card.addEventListener('click', function(e){
 card.classList.toggle('flipped');
 });
@@ -7723,6 +7777,9 @@ initFlipToggles();
 initParaFlip();
 initReadAloud();
 initWordJump();
+document.querySelectorAll('.set-btn').forEach(function(btn){
+btn.addEventListener('click', function(){ switchSet(btn.dataset.set, btn); });
+});
 switchSet('set1', document.querySelectorAll('.set-btn')[0]);
 updateMainCardStars();
 });
