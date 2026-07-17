@@ -1,94 +1,199 @@
-# WordTales 📖
+# WordTales
 
-将英语词汇"编织"进主题短文中，通过阅读语境自然记忆单词。
+一个将英语词汇放回语境中学习的单页应用。项目收录 **7 份词集、28 个主题专栏、897 个词汇和 132 个短文段落**，并把词卡、主题阅读、语音朗读、逐段解析和复习练习整合在同一个页面中。
 
-包含 **7 份词汇、28 个主题专栏、866 个生词**，每列单词都融入一篇独立的英文短文，配合词卡释义、语音朗读和互动高亮，打造一站式词汇学习体验。
+整个应用只有一个 HTML 文件，无构建步骤、无第三方依赖，可离线打开，也可直接部署为静态站点。
 
-## ✨ 功能亮点
+## 功能
 
-### 📝 主题短文记忆
-每列词汇编织进一篇独立主题短文，所有生词加粗高亮，通过上下文理解词义。主题涵盖贸易、科研、探险、历史、悬疑等多种题材，让背单词不再枯燥。
+- **语境阅读**：每列词汇对应一篇主题短文，目标词在文章中高亮显示。
+- **词卡学习**：单张词卡可翻转；每列可批量切换“英文 / 自定义 / 释义”状态。
+- **单词点读**：点击短文中的高亮词可查看词性和中文释义，并调用系统英文语音发音。
+- **短文朗读**：使用 Web Speech API 分句朗读，根据问句、感叹句和句子长度调整语速与音调，同时显示逐词高亮和阅读进度。
+- **逐段解析**：每个段落可翻转查看中文翻译、语法结构和重点表达。
+- **分类游戏**：将漂浮词卡拖入“比较认识”或“不太认识”，后者会被加星并加入复习清单。
+- **抄写练习**：桌面端使用键盘拼写，手机和平板使用横屏手写画板；练习范围仅包含当前列已加星的词。
+- **本地进度**：加星词汇保存在浏览器 `localStorage` 中，刷新页面后仍然保留。
+- **响应式与打印**：适配桌面端和移动端，并提供打印样式。
 
-### 🔊 语音朗读
-- 分句朗读，句间自然停顿，模拟 native speaker 的轻重缓急
-- 根据句型（陈述/疑问/感叹）动态调整音调与语速
-- 自动选择系统最优英文语音（Samantha / Sandy / Shelley 等）
+## 快速开始
 
-### 📍 实时进度追踪
-朗读时逐词高亮当前读到的地方，自动滚动跟随，进度条实时显示"第 X / N 词 · X%"。
+直接下载并用浏览器打开：
 
-### 🔗 点击跳转 + 发音
-点击短文中的任意加粗生词，平滑滚动到上方对应词卡，自动翻转显示释义并朗读单词发音。
-
-### 🔄 词卡翻转
-每个词卡支持点击 3D 翻转：正面仅英文，背面同时显示英文、词性、中文释义。每列标题旁有三档开关，可一键批量切换整列词卡的翻面状态。
-
-### 📑 多份切换
-顶部一键切换 7 份词汇，导航栏自动更新为当前份的列链接。
-
-### 📦 完全自包含
-单个 HTML 文件，无外部依赖，双击即可打开，方便分享和离线使用。
-
-## 📊 内容概览
-
-| 份 | 列数 | 词数 | 主题示例 |
-|----|------|------|----------|
-| 第一份 | 4 | ~130 | 国际贸易博览会、实验室突破、北极探险危机、王国新政 |
-| 第二份 | 4 | ~115 | 不懈求真、边境小镇危机、都市梦、企业诉讼 |
-| 第三份 | 5 | 169 | 星海探微、心灵重启、寻根之旅、冰川危途 |
-| 第四份 | 4 | 130 | 街区新生、街区复兴、海岛守卫、艺术寻觅 |
-| 第五份 | 4 | 136 | 孤岛寻芳、制药风暴、贵族觉醒、沙漠迷途 |
-| 第六份 | 4 | ~130 | 医学调查、美术馆之谜、校园竞赛丑闻、旧工厂调查 |
-| 第七份 | 3 | 86 | 民众运动、侦探迷案调查、中世纪城堡攻防 |
-
-## 🚀 使用方式
-
-1. 下载 `vocab-essays/vocab-essays.html`
-2. 用浏览器打开（推荐 Chrome 或 Edge，以获得最佳语音朗读体验）
-3. 顶部按钮切换不同份，点击「朗读」按钮听文章，点击加粗生词跳转词卡
-
-## 🛠️ 技术栈
-
-- 纯 HTML / CSS / JavaScript，零依赖
-- Web Speech API（`SpeechSynthesis`）实现语音朗读
-- CSS 变量驱动的主题设计系统
-- 响应式布局，支持移动端和打印
-
-## 🚢 部署方式（GitHub Pages + Actions）
-
-本项目通过 `.github/workflows/jekyll-gh-pages.yml` 实现自动化部署，推送到 `main` 分支即自动发布到 GitHub Pages。
-
-### 工作流程
-
-1. **触发条件**：当代码推送到 `main` 分支时，GitHub Actions 自动触发部署流程
-2. **构建阶段**（`build` job）：
-   - 检出仓库代码
-   - 创建 `_site` 目录作为构建产物
-   - 将 `vocab-essays/vocab-essays.html` 复制为 `_site/index.html`（作为站点首页）
-   - 将 `README.md` 复制到 `_site/` 目录
-   - 打包 `_site` 目录为 Pages artifact
-3. **部署阶段**（`deploy` job）：
-   - 将 artifact 部署到 GitHub Pages
-   - 自动生成访问地址
-
-### 关键配置
-
-```yaml
-# 部署模式设为 workflow（通过 Actions 部署，而非 Jekyll 构建）
-build_type: workflow
+```text
+vocab-essays/vocab-essays.html
 ```
 
-与默认的 Jekyll 部署不同，本项目的 workflow 跳过了 Jekyll 构建过程，直接将 HTML 文件作为静态资源部署。这样访问者打开 Pages 链接时看到的就是完整的词汇学习页面，而非 README 的 Markdown 渲染。
+也可以在仓库根目录启动本地静态服务器：
 
-### 启用步骤
+```bash
+python3 -m http.server 8000
+```
 
-1. 进入仓库 **Settings → Pages**
-2. **Build and deployment** 的 **Source** 选择 **GitHub Actions**
-3. 确保仓库中有 `.github/workflows/jekyll-gh-pages.yml` 文件
-4. 推送代码到 `main` 分支，Actions 会自动构建并部署
+然后访问：
 
-部署完成后，访问 `https://<username>.github.io/<repo-name>/` 即可使用。
+```text
+http://localhost:8000/vocab-essays/vocab-essays.html
+```
 
-## 📄 License
+建议使用较新的 Chrome、Edge 或 Safari。语音的音色和可用性取决于浏览器及操作系统安装的英文语音；浏览器不支持 `SpeechSynthesis` 时，其余学习功能仍可使用。
 
-MIT
+## 使用路径
+
+1. 在页首选择一份词集，通过粘性目录跳到目标专栏。
+2. 先浏览词卡，再阅读短文；点击高亮词可查看释义并听发音。
+3. 点击段尾“解析”查看翻译与语法说明，或点击“朗读”跟读全文。
+4. 使用“游戏”将词汇按熟悉程度分类；标为“不太认识”的词会显示五角星。
+5. 回到同一列点击“抄写”，集中练习已加星的词。
+
+## 内容概览
+
+| 词集 | 专栏 | 词汇 | 段落 | 主题示例 |
+| --- | ---: | ---: | ---: | --- |
+| 第一份 | 4 | 131 | 16 | 国际贸易博览会、实验室突破、北极探险危机、王国新政 |
+| 第二份 | 4 | 115 | 16 | 不懈求真、边境小镇危机、都市梦、企业诉讼 |
+| 第三份 | 5 | 169 | 24 | 星海探微、心灵重启、寻根之旅、冰川危途 |
+| 第四份 | 4 | 130 | 21 | 街区新生、街区复兴、海岛守卫、艺术寻觅 |
+| 第五份 | 4 | 136 | 24 | 孤岛寻芳、制药风暴、贵族觉醒、沙漠迷途 |
+| 第六份 | 4 | 130 | 18 | 医学调查、美术馆之谜、校园竞赛丑闻、旧工厂调查 |
+| 第七份 | 3 | 86 | 13 | 民众运动、侦探迷案调查、中世纪城堡攻防 |
+| **合计** | **28** | **897** | **132** | |
+
+## 项目结构
+
+```text
+.
+├── .github/workflows/jekyll-gh-pages.yml  # GitHub Pages 发布流程
+├── vocab-essays/
+│   └── vocab-essays.html                  # 样式、数据、渲染器与全部交互
+├── LICENSE
+└── README.md
+```
+
+## 代码架构
+
+`vocab-essays.html` 是一个自包含的单文件应用，但 JavaScript 按职责挂载在全局命名空间 `WordTales` 下：
+
+```text
+结构化词集数据
+    │
+    ▼
+WordTales.Data ──索引与查询──► WordTales.Renderer
+                                      │ 生成页面 DOM
+                                      ▼
+                              WordTales.Features
+                    ┌───────────┬─────┴─────┬───────────┐
+                 Navigation   Reader      Cards      Analysis
+                                            │
+                              WordPopup / Game / CopyPractice
+                                            │
+                                            ▼
+                                  WordTales.App.init
+```
+
+### 模块职责
+
+| 模块 | 职责 |
+| --- | --- |
+| `WordTales.Data` | 保存词集数据，建立词集、专栏、词汇和段落索引；提供新增与查询 API。 |
+| `WordTales.Renderer` | 将数据转义并渲染为词集切换器、专栏、词卡和短文 DOM。 |
+| `Navigation` | 切换词集、更新专栏目录和统计信息，并清理正在运行的朗读状态。 |
+| `Reader` | 选择英文语音、拆分句子与分句、控制韵律、同步逐词高亮和进度。 |
+| `WordPopup` | 通过 `data-vocab-id` 查询词汇，显示释义弹层并播放单词发音。 |
+| `Progress` | 读写 `localStorage.starredWords`，同步主页面和游戏中的加星状态。 |
+| `Game` | 创建全屏拖拽分类场景，使用 `requestAnimationFrame` 驱动漂浮词卡。 |
+| `CopyPractice` | 过滤当前专栏的加星词，并按设备选择键盘输入或 Canvas 手写模式。 |
+| `Analysis` | 将短文切换为解析视图，通过段落 ID 加载翻译与语法要点。 |
+| `Cards` | 初始化 3D 词卡、批量翻面工具栏，以及游戏和抄写入口。 |
+| `App` | 按顺序完成渲染和各交互模块初始化。 |
+
+页面启动顺序为：
+
+```text
+DOMContentLoaded
+  → Renderer.render()
+  → Cards / Analysis / Reader / WordPopup 初始化
+  → 绑定词集切换
+  → 激活第一份词集
+  → 恢复本地加星状态
+```
+
+## 数据模型与扩展
+
+内容位于 `WordTales.Data` 的 `sets` 数组中，层级为 `set → column → words / paragraphs`。一个精简示例如下：
+
+```js
+{
+  id: "set8",
+  number: 8,
+  label: "第八份",
+  columns: [{
+    id: "s8col1",
+    number: 1,
+    title: "第一列",
+    theme: { zh: "主题中文名", en: "English Theme" },
+    words: [{
+      id: "s8col1-example",
+      word: "example",
+      pos: "n.",
+      meaning: "例子"
+    }],
+    paragraphs: [{
+      id: "s8col1-p1",
+      segments: [
+        "This is an ",
+        { vocabId: "s8col1-example", text: "example" },
+        "."
+      ],
+      analysis: {
+        translation: "这是一个例子。",
+        points: ["语法与表达说明"]
+      }
+    }]
+  }]
+}
+```
+
+维护内容时需要遵守三条关联规则：
+
+1. `set`、`column`、`word` 和 `paragraph` 的 `id` 必须唯一。
+2. 段落对象片段的 `vocabId` 必须指向当前专栏中真实存在的词汇 ID。
+3. `analysis` 与段落放在同一对象中；`points` 可使用 `<span class="keyword">...</span>` 标注重点，其余内容会在展示前转义。
+
+除了直接编辑 `sets`，也可以在应用初始化前调用：
+
+```js
+WordTales.Data.addWords(columnId, words);
+WordTales.Data.addParagraphs(columnId, paragraphs);
+WordTales.Data.addSet(set);
+```
+
+渲染器会自动生成词数、切换按钮和专栏导航。若增加全新的交互模块，应继续挂载到 `WordTales`，并在 `WordTales.App.init` 中初始化，以避免向全局作用域散落额外状态。
+
+## 技术说明
+
+- 原生 HTML、CSS 和 JavaScript，无运行时依赖。
+- Web Speech API：短文朗读与单词发音。
+- Canvas 2D：移动端手写练习。
+- Web Storage API：保存加星词汇。
+- `requestAnimationFrame`：驱动分类游戏中的词卡运动。
+- CSS 变量、3D transform、媒体查询和打印样式：主题、翻卡和多端适配。
+
+仓库当前没有自动化测试或打包流程。修改后至少应手动检查：词集切换、词卡翻面、段落解析、语音启停、游戏拖放、刷新后的加星恢复，以及桌面端和移动端抄写模式。
+
+## 部署
+
+仓库已配置 GitHub Pages Actions：`.github/workflows/jekyll-gh-pages.yml`。
+
+工作流在推送到 `main` 或手动触发时执行：
+
+1. 检出仓库并配置 GitHub Pages。
+2. 将 `vocab-essays/vocab-essays.html` 复制为 `_site/index.html`。
+3. 将 `README.md` 一并放入发布产物。
+4. 上传静态站点并部署到 GitHub Pages。
+
+首次部署时，在仓库 **Settings → Pages → Build and deployment** 中将 **Source** 设为 **GitHub Actions**。此项目不经过 Jekyll 构建。
+
+## License
+
+[MIT](LICENSE)
