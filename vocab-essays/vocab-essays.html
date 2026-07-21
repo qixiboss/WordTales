@@ -15119,6 +15119,12 @@ var p = document.createElement('p');
 p.textContent = '请将手机横屏使用';
 rotateHint.appendChild(icon);
 rotateHint.appendChild(p);
+var exitBtn = document.createElement('button');
+exitBtn.className = 'copy-exit';
+exitBtn.textContent = '退出';
+exitBtn.setAttribute('aria-label', '退出抄写模式');
+exitBtn.addEventListener('click', endCopy);
+rotateHint.appendChild(exitBtn);
 document.body.appendChild(rotateHint);
 
 function checkOrientation() {
