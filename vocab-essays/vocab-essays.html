@@ -13892,7 +13892,7 @@ WordTales.Renderer = (function() {
 WordTales.Features = (function() {
 function switchSet(setId, btn) {
 closeWordPopups();
-if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
+_clearReadTimer();
 if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
 if (currentBlock) unwrapWords(currentBlock);
 resetReadButtons();
@@ -13918,6 +13918,10 @@ var readCancelled = false;
 var _currentClosePopup = null;
 var _readTimer = null;
 
+function _clearReadTimer() {
+if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
+}
+
 function closeWordPopups() {
 if (_currentClosePopup) {
 document.removeEventListener('click', _currentClosePopup);
@@ -13932,7 +13936,7 @@ popup.remove();
 
 function resetReadButtons() {
 readCancelled = true;
-if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
+_clearReadTimer();
 document.querySelectorAll('.read-btn').forEach(function(b){
 b.textContent = '朗读';
 b.classList.remove('reading');
@@ -13967,12 +13971,7 @@ var ctx = { tokens: tokens, fullText: fullText };
 paragraphs.forEach(function(p, paraIdx){
 var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, {
 acceptNode: function(node){
-var parent = node.parentNode;
-while (parent && parent !== p) {
-if (parent.nodeName === 'BUTTON') return NodeFilter.FILTER_REJECT;
-parent = parent.parentNode;
-}
-return NodeFilter.FILTER_ACCEPT;
+return node.parentElement && node.parentElement.closest('button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
 }
 });
 var textNodes = [];
@@ -13992,7 +13991,7 @@ var span = document.createElement('span');
 span.className = 'tok';
 span.textContent = part;
 frag.appendChild(span);
-tokens.push({ el: span, start: fullText.length, end: fullText.length + part.length });
+tokens.push({ el: span, start: fullText.length, end: fullText.length + part.length, index: tokens.length });
 fullText += part;
 }
 });
@@ -14249,7 +14248,7 @@ token = findTokenByGlobalChar(globalChar - 1) || findTokenByGlobalChar(globalCha
 }
 if (token) {
 token.el.classList.add('reading-highlight');
-var wordIdx = result.tokens.indexOf(token) + 1;
+var wordIdx = token.index + 1;
 var pct = Math.round((token.end / totalLen) * 100);
 progressFill.style.width = pct + '%';
 statusLabel.textContent = '朗读中 · 第 ' + wordIdx + ' / ' + tokenCount + ' 词 · ' + pct + '%';
@@ -14291,7 +14290,7 @@ speakNext();
 utterance.onerror = function(){
 if (readCancelled) return;
 readCancelled = true;
-if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
+_clearReadTimer();
 speechSynthesis.cancel();
 btn.textContent = '朗读';
 btn.classList.remove('reading');
@@ -14309,7 +14308,7 @@ speechSynthesis.speak(utterance);
 currentBtn = btn;
 currentBlock = block;
 readCancelled = false;
-if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
+_clearReadTimer();
 btn.textContent = '停止';
 btn.classList.add('reading');
 statusLabel.textContent = '朗读中 · ' + (bestVoice ? bestVoice.name : '默认') + ' 语音';
@@ -14449,16 +14448,25 @@ var CARD_H = 80;
 var gameFloatTop = 180;
 var cachedDzRects = [];
 var gameResizeHandler = null;
+var _gameSection = null;
+
+var _starredCache = null;
+var _starredCacheValid = false;
 
 function getStarredWords() {
+if (_starredCacheValid) return _starredCache;
 try {
-return JSON.parse(localStorage.getItem('starredWords') || '[]');
+_starredCache = JSON.parse(localStorage.getItem('starredWords') || '[]');
 } catch(e) {
-return [];
+_starredCache = [];
 }
+_starredCacheValid = true;
+return _starredCache;
 }
 
 function setStarredWords(arr) {
+_starredCache = arr;
+_starredCacheValid = true;
 try {
 localStorage.setItem('starredWords', JSON.stringify(arr));
 } catch(e) {}
@@ -14479,9 +14487,9 @@ function isWordStarred(word) {
 return getStarredWords().indexOf(word) >= 0;
 }
 
-function updateMainCardStars() {
+function updateMainCardStars(section) {
 var starred = getStarredWords();
-document.querySelectorAll('.vocab-card').forEach(function(card){
+(section || document).querySelectorAll('.vocab-card').forEach(function(card){
 var vw = card.querySelector('.vw');
 if (!vw) return;
 var word = vw.textContent.trim();
@@ -14511,6 +14519,8 @@ return rect ? Math.max(maxBottom, rect.bottom + 16) : maxBottom;
 function startGame(section) {
 var cards = section.querySelectorAll('.vocab-card');
 if (cards.length === 0) return;
+
+_gameSection = section;
 
 if (gameOverlay) {
 endGame();
@@ -14814,7 +14824,7 @@ toggleStarWord(word, false);
 var existingStar = card.querySelector('.game-star');
 if (existingStar) existingStar.remove();
 }
-updateMainCardStars();
+updateMainCardStars(_gameSection);
 
 if (card._dropClickHandler) {
 card.removeEventListener('click', card._dropClickHandler);
@@ -14842,6 +14852,7 @@ if (progress) progress.textContent = '已收集 ' + gameDroppedCount + ' / ' + g
 
 function removeDroppedCard(card) {
 if (card._cleanup) card._cleanup();
+if (card._dropClickHandler) card.removeEventListener('click', card._dropClickHandler);
 var parentDz = card.parentElement;
 card.remove();
 if (parentDz) {
@@ -14872,6 +14883,7 @@ gameCards = [];
 gameDroppedCount = 0;
 floatCards = [];
 cachedDzRects = [];
+_gameSection = null;
 }
 }
 
@@ -15048,7 +15060,7 @@ overlay._meaningDisplay = meaningDisplay;
 showCopyWord();
 
 input.addEventListener('keydown', function(e){
-if (e.key === 'Enter' || e.keyCode === 13) {
+if (e.key === 'Enter') {
 e.preventDefault();
 if (copyOverlay._completed) {
 copyOverlay._completed = false;
