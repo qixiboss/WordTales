@@ -4,16 +4,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="通过主题短文、双面词卡、语音朗读和练习功能，在真实语境中学习和记忆英语词汇。">
 <title>词汇记忆短文集 · Vocabulary in Context</title>
 <style>
 :root {
 --bg:#fbf9f4;
 --bg2:#f1ebdf;
 --ink:#2a2520;
---muted:#837866;
+--muted:#6f6555;
 --rule:#e2d9c7;
 --accent:#1b5e72;
---accent2:#b8860b;
+--accent2:#805d00;
 --accent-soft:rgba(27,94,114,.12);
 --serif:'Lora',Georgia,'Noto Serif CJK SC','Songti SC',serif;
 --sans:'WorkSans',-apple-system,'PingFang SC','Noto Sans CJK SC','Microsoft YaHei',sans-serif;
@@ -42,7 +43,7 @@ margin:0 auto}
 font-size:.75rem;
 letter-spacing:.25em;
 text-transform:uppercase;
-color:rgba(251,249,244,.6);
+color:rgba(251,249,244,.82);
 margin-bottom:1rem}
 .cover h1 {
 font-family:var(--serif);
@@ -61,7 +62,7 @@ flex-wrap:wrap}
 font-family:var(--sans);
 font-size:.85rem;
 font-weight:600;
-color:rgba(251,249,244,.7);
+color:rgba(251,249,244,.9);
 background:rgba(251,249,244,.1);
 border:1px solid rgba(251,249,244,.25);
 padding:.5rem 1.4rem;
@@ -78,7 +79,7 @@ color:var(--accent);
 border-color:#fbf9f4}
 .set-meta {
 font-size:.8rem;
-color:rgba(251,249,244,.5);
+color:rgba(251,249,244,.78);
 margin-top:.8rem;
 transition:opacity .2s}
 /* TOC */
@@ -116,6 +117,8 @@ display:none}
 display:block}
 .column-section {
 margin-bottom:4rem;
+content-visibility:auto;
+contain-intrinsic-size:auto 1200px;
 scroll-margin-top:60px}
 .column-section:last-child {
 margin-bottom:0}
@@ -181,6 +184,7 @@ color:#fff}
 position:fixed;
 top:0;left:0;
 width:100vw;height:100vh;
+height:100dvh;
 background:rgba(245,242,238,.97);
 z-index:9999;
 display:none;
@@ -192,6 +196,7 @@ display:block}
 position:fixed;
 top:0;left:0;
 width:100vw;height:100vh;
+height:100dvh;
 background:rgba(245,242,238,.98);
 z-index:9999;
 display:none;
@@ -1060,6 +1065,22 @@ padding:.15rem .35rem}
 font-size:.7rem;
 padding:.35rem .8rem}
 }
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[role="dialog"]:focus-visible {
+outline:3px solid #0b74a5;
+outline-offset:3px}
+@media (prefers-reduced-motion: reduce) {
+html {
+scroll-behavior:auto}
+*,*::before,*::after {
+animation-duration:.01ms!important;
+animation-iteration-count:1!important;
+transition-duration:.01ms!important;
+scroll-behavior:auto!important}
+}
 @media print {
 .toc {
 display:none}
@@ -1069,7 +1090,8 @@ padding:2rem}
 box-shadow:none;
 break-inside:avoid}
 .column-section {
-break-inside:avoid}
+break-inside:avoid;
+content-visibility:visible}
 .set-content {
 display:block!important}
 .set-btn {
@@ -1083,10 +1105,10 @@ display:none}
     <p class="kicker">Vocabulary in Context</p>
     <h1>词汇记忆短文集</h1>
     <div class="set-switcher" id="setSwitcher"></div>
-    <p class="set-meta" id="setMeta"></p>
+    <p class="set-meta" id="setMeta" aria-live="polite"></p>
   </div>
 </header>
-<nav class="toc" id="toc"></nav>
+<nav class="toc" id="toc" aria-label="栏目目录"></nav>
 <main id="appContent"></main>
 <footer>
 <p>
@@ -13857,7 +13879,7 @@ WordTales.Renderer = (function() {
     }).join('');
     return '<section id="' + escapeHtml(column.id) + '" class="column-section">' +
       '<div class="section-head">' +
-      '<span class="col-num">' + String(column.number).padStart(2, '0') + '</span>' +
+      '<span class="col-num">' + ('0' + String(column.number)).slice(-2) + '</span>' +
       '<h2>' + escapeHtml(column.title) + '</h2>' +
       '<p class="theme">' + escapeHtml(column.theme.zh) + ' · ' + escapeHtml(column.theme.en) + '</p>' +
       '<span class="word-count">' + column.words.length + ' 词</span>' +
@@ -13870,7 +13892,7 @@ WordTales.Renderer = (function() {
     var switcher = document.getElementById('setSwitcher');
     var main = document.getElementById('appContent');
     switcher.innerHTML = WordTales.Data.sets.map(function(set, index) {
-      return '<button class="set-btn' + (index === 0 ? ' active' : '') + '" data-set="' + escapeHtml(set.id) + '">' +
+      return '<button type="button" class="set-btn' + (index === 0 ? ' active' : '') + '" data-set="' + escapeHtml(set.id) + '" aria-pressed="' + (index === 0 ? 'true' : 'false') + '" aria-controls="' + escapeHtml(set.id) + '">' +
         escapeHtml(set.label) + ' · ' + set.columns.length + '列' + WordTales.Data.countWords(set) + '词</button>';
     }).join('');
     main.innerHTML = WordTales.Data.sets.map(function(set, index) {
@@ -13890,6 +13912,77 @@ WordTales.Renderer = (function() {
  * 每个模块只暴露页面需要直接调用的函数，其余状态保留在闭包内。
  * ============================================================ */
 WordTales.Features = (function() {
+var _activeModal = null;
+var _modalPreviousFocus = null;
+var _modalClose = null;
+
+function setPageInert(inert) {
+document.querySelectorAll('body > header, body > nav, body > main, body > footer').forEach(function(el){
+el.inert = inert;
+if (inert) el.setAttribute('aria-hidden', 'true');
+else el.removeAttribute('aria-hidden');
+});
+}
+
+function getModalFocusables(container) {
+return Array.prototype.filter.call(container.querySelectorAll('button, input, [href], [tabindex]:not([tabindex="-1"])'), function(el){
+return !el.disabled && el.getClientRects().length > 0;
+});
+}
+
+function handleModalKeydown(e) {
+if (!_activeModal) return;
+if (e.key === 'Escape') {
+e.preventDefault();
+if (_modalClose) _modalClose();
+return;
+}
+if (e.key !== 'Tab') return;
+var focusables = getModalFocusables(_activeModal);
+if (focusables.length === 0) {
+e.preventDefault();
+_activeModal.focus();
+return;
+}
+var first = focusables[0];
+var last = focusables[focusables.length - 1];
+if (e.shiftKey && document.activeElement === first) {
+e.preventDefault();
+last.focus();
+} else if (!e.shiftKey && document.activeElement === last) {
+e.preventDefault();
+first.focus();
+}
+}
+
+function activateModal(container, closeFn, label) {
+if (!_activeModal) {
+_modalPreviousFocus = document.activeElement;
+setPageInert(true);
+document.addEventListener('keydown', handleModalKeydown);
+}
+_activeModal = container;
+_modalClose = closeFn;
+container.setAttribute('role', 'dialog');
+container.setAttribute('aria-modal', 'true');
+container.setAttribute('aria-label', label);
+container.setAttribute('tabindex', '-1');
+setTimeout(function(){
+var focusables = getModalFocusables(container);
+(focusables[0] || container).focus();
+}, 0);
+}
+
+function deactivateModal() {
+document.removeEventListener('keydown', handleModalKeydown);
+setPageInert(false);
+var previous = _modalPreviousFocus;
+_activeModal = null;
+_modalPreviousFocus = null;
+_modalClose = null;
+if (previous && typeof previous.focus === 'function') previous.focus();
+}
+
 function switchSet(setId, btn) {
 closeWordPopups();
 _clearReadTimer();
@@ -13897,9 +13990,22 @@ if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
 if (currentBlock) unwrapWords(currentBlock);
 resetReadButtons();
 document.querySelectorAll('.set-content').forEach(function(el){ el.classList.remove('active'); });
-document.getElementById(setId).classList.add('active');
-document.querySelectorAll('.set-btn').forEach(function(b){ b.classList.remove('active'); });
-if(btn) btn.classList.add('active');
+document.querySelectorAll('.set-content').forEach(function(el){
+el.setAttribute('aria-hidden', 'true');
+el.inert = true;
+});
+var activeSet = document.getElementById(setId);
+activeSet.classList.add('active');
+activeSet.setAttribute('aria-hidden', 'false');
+activeSet.inert = false;
+document.querySelectorAll('.set-btn').forEach(function(b){
+b.classList.remove('active');
+b.setAttribute('aria-pressed', 'false');
+});
+if(btn) {
+btn.classList.add('active');
+btn.setAttribute('aria-pressed', 'true');
+}
 var nav = document.getElementById('toc');
 var setData = WordTales.Data.getSet(setId) || WordTales.Data.sets[0];
 nav.innerHTML = '';
@@ -13929,7 +14035,11 @@ _currentClosePopup = null;
 }
 document.querySelectorAll('.word-popup').forEach(function(popup){
 var parent = popup.parentElement;
-if (parent) { parent.style.display = ''; parent.style.position = ''; }
+if (parent) {
+parent.style.display = '';
+parent.style.position = '';
+parent.setAttribute('aria-expanded', 'false');
+}
 popup.remove();
 });
 }
@@ -14058,13 +14168,25 @@ return enVoices[0];
 }
 
 function toggleRead(block, btn) {
-if (currentBtn === btn && !readCancelled) {
-speechSynthesis.cancel();
+if (typeof window.speechSynthesis === 'undefined' || typeof window.SpeechSynthesisUtterance === 'undefined') {
+btn.textContent = '暂不支持朗读';
+btn.disabled = true;
+btn.setAttribute('aria-disabled', 'true');
 return;
 }
-speechSynthesis.cancel();
+if (currentBtn === btn && !readCancelled) {
+var activeBlock = currentBlock;
+readCancelled = true;
+_clearReadTimer();
+window.speechSynthesis.cancel();
+if (activeBlock) unwrapWords(activeBlock);
 resetReadButtons();
-if (currentBlock) unwrapWords(currentBlock);
+return;
+}
+var previousBlock = currentBlock;
+window.speechSynthesis.cancel();
+if (previousBlock) unwrapWords(previousBlock);
+resetReadButtons();
 
 closeWordPopups();
 
@@ -14082,6 +14204,8 @@ block.querySelector('.essay-head').after(progressBar);
 
 var statusLabel = document.createElement('div');
 statusLabel.className = 'read-status';
+statusLabel.setAttribute('role', 'status');
+statusLabel.setAttribute('aria-live', 'polite');
 statusLabel.textContent = '准备朗读…';
 progressBar.after(statusLabel);
 
@@ -14324,9 +14448,10 @@ head.className = 'essay-head';
 head.appendChild(h3.cloneNode(true));
 h3.remove();
 var btn = document.createElement('button');
+btn.type = 'button';
 btn.className = 'read-btn';
 btn.textContent = '朗读';
-btn.onclick = function(){ toggleRead(block, btn); };
+btn.addEventListener('click', function(){ toggleRead(block, btn); });
 head.appendChild(btn);
 block.insertBefore(head, block.firstChild);
 });
@@ -14369,6 +14494,10 @@ meaning: vm ? vm.textContent.trim() : ''
 }
 });
 block.querySelectorAll('strong.word').forEach(function(wordEl){
+wordEl.setAttribute('role', 'button');
+wordEl.setAttribute('tabindex', '0');
+wordEl.setAttribute('aria-expanded', 'false');
+wordEl.setAttribute('aria-label', wordEl.textContent.trim() + '，查看释义并朗读');
 wordEl.addEventListener('click', function(e){
 e.stopPropagation();
 var word = wordEl.textContent.trim().toLowerCase();
@@ -14387,11 +14516,14 @@ var parent = p.parentElement;
 if (parent) {
 parent.style.display = '';
 parent.style.position = '';
+parent.setAttribute('aria-expanded', 'false');
 }
 p.remove();
 });
 var popup = document.createElement('div');
 popup.className = 'word-popup';
+popup.setAttribute('role', 'status');
+popup.setAttribute('aria-live', 'polite');
 var pw = document.createElement('div');
 pw.className = 'pw';
 pw.textContent = info.word;
@@ -14416,6 +14548,7 @@ wordEl.style.position = 'relative';
 wordEl.style.display = 'inline-block';
 popup.addEventListener('click', function(ev){ ev.stopPropagation(); });
 wordEl.appendChild(popup);
+wordEl.setAttribute('aria-expanded', 'true');
 speakWord(info.word);
 if (_currentClosePopup) {
 document.removeEventListener('click', _currentClosePopup);
@@ -14424,6 +14557,7 @@ _currentClosePopup = null;
 var closePopup = function(ev){
 if (!popup.contains(ev.target) && ev.target !== wordEl) {
 popup.remove();
+wordEl.setAttribute('aria-expanded', 'false');
 wordEl.style.display = '';
 wordEl.style.position = '';
 document.removeEventListener('click', closePopup);
@@ -14432,6 +14566,15 @@ _currentClosePopup = null;
 };
 _currentClosePopup = closePopup;
 document.addEventListener('click', closePopup);
+});
+wordEl.addEventListener('keydown', function(e){
+if (e.key === 'Enter' || e.key === ' ') {
+e.preventDefault();
+wordEl.click();
+} else if (e.key === 'Escape') {
+closeWordPopups();
+wordEl.setAttribute('aria-expanded', 'false');
+}
 });
 });
 });
@@ -14537,8 +14680,11 @@ var themeEl = section.querySelector('.theme');
 title.textContent = themeEl ? themeEl.textContent : '词汇游戏';
 var progress = document.createElement('div');
 progress.className = 'game-progress';
+progress.setAttribute('role', 'status');
+progress.setAttribute('aria-live', 'polite');
 progress.textContent = '已收集 0 / ' + cards.length;
 var exitBtn = document.createElement('button');
+exitBtn.type = 'button';
 exitBtn.className = 'game-exit';
 exitBtn.textContent = '退出游戏';
 exitBtn.setAttribute('aria-label', '退出游戏模式');
@@ -14551,6 +14697,8 @@ gameOverlay.appendChild(header);
 gameDropzones = [];
 var dzFamiliar = document.createElement('div');
 dzFamiliar.className = 'game-dropzone familiar empty';
+dzFamiliar.setAttribute('role', 'group');
+dzFamiliar.setAttribute('aria-label', '比较认识的单词');
 var labelF = document.createElement('span');
 labelF.className = 'game-zone-label';
 labelF.textContent = '比较认识';
@@ -14560,6 +14708,8 @@ gameDropzones.push(dzFamiliar);
 
 var dzUnfamiliar = document.createElement('div');
 dzUnfamiliar.className = 'game-dropzone unfamiliar empty';
+dzUnfamiliar.setAttribute('role', 'group');
+dzUnfamiliar.setAttribute('aria-label', '不太认识的单词');
 var labelU = document.createElement('span');
 labelU.className = 'game-zone-label';
 labelU.textContent = '不太认识';
@@ -14568,6 +14718,7 @@ gameOverlay.appendChild(dzUnfamiliar);
 gameDropzones.push(dzUnfamiliar);
 
 document.body.appendChild(gameOverlay);
+activateModal(gameOverlay, endGame, '词汇分类游戏');
 updateDzRects();
 
 gameCards = [];
@@ -14585,9 +14736,12 @@ if (!vw) return;
 var gameCard = document.createElement('div');
 gameCard.className = 'game-card floating';
 gameCard.dataset.idx = idx;
+gameCard.setAttribute('role', 'button');
+gameCard.setAttribute('tabindex', '0');
 
 var word = vw.textContent.trim();
 gameCard.dataset.word = word;
+gameCard.setAttribute('aria-label', word + '，按左方向键标记为比较认识，按右方向键标记为不太认识');
 
 var inner = document.createElement('div');
 inner.className = 'card-inner';
@@ -14637,6 +14791,16 @@ gameOverlay.appendChild(gameCard);
 gameCards.push(gameCard);
 
 makeFloatable(gameCard);
+gameCard.addEventListener('keydown', function(e){
+if (!gameCard.classList.contains('dropped') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+e.preventDefault();
+dropCard(gameCard, e.key === 'ArrowLeft' ? dzFamiliar : dzUnfamiliar);
+} else if (gameCard.classList.contains('dropped') && (e.key === 'Enter' || e.key === ' ')) {
+e.preventDefault();
+gameCard.classList.toggle('flipped');
+gameCard.setAttribute('aria-pressed', gameCard.classList.contains('flipped') ? 'true' : 'false');
+}
+});
 });
 
 updateDzRects();
@@ -14652,6 +14816,7 @@ gameResizeHandler = _debouncedUpdateDzRects;
 
 function startFloatLoop() {
 if (floatReq) cancelAnimationFrame(floatReq);
+if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 floatCards = Array.prototype.slice.call(document.querySelectorAll('.game-card.floating'));
 floatCards.forEach(function(card){
 if (!card.floatState) {
@@ -14829,19 +14994,10 @@ updateMainCardStars(_gameSection);
 if (card._dropClickHandler) {
 card.removeEventListener('click', card._dropClickHandler);
 }
-card.dataset.clickCount = '0';
 var handler = function(e){
 e.stopPropagation();
-var count = parseInt(card.dataset.clickCount || '0') + 1;
-card.dataset.clickCount = String(count);
-if (count === 1) {
-card.classList.add('flipped');
-} else if (count === 2) {
-card.classList.remove('flipped');
-card.dataset.clickCount = '0';
-} else {
-removeDroppedCard(card);
-}
+card.classList.toggle('flipped');
+card.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
 };
 card._dropClickHandler = handler;
 card.addEventListener('click', handler);
@@ -14859,7 +15015,7 @@ if (parentDz) {
 if (parentDz.currentCard === card) {
 parentDz.currentCard = null;
 }
-if (parentDz.children.length === 0) {
+if (!parentDz.querySelector('.game-card')) {
 parentDz.classList.add('empty');
 }
 }
@@ -14878,6 +15034,7 @@ if (card._cleanup) card._cleanup();
 });
 gameOverlay.remove();
 gameOverlay = null;
+deactivateModal();
 gameDropzones = [];
 gameCards = [];
 gameDroppedCount = 0;
@@ -14975,16 +15132,19 @@ desc.textContent = '当前列还没有标记的单词，去游戏模式中把不
 var actions = document.createElement('div');
 actions.className = 'copy-alert-actions';
 var goGame = document.createElement('button');
+goGame.type = 'button';
 goGame.className = 'copy-alert-btn primary';
 goGame.textContent = '去游戏标记';
 goGame.addEventListener('click', function(){
+deactivateModal();
 mask.remove();
 if (section) startGame(section);
 });
 var cancel = document.createElement('button');
+cancel.type = 'button';
 cancel.className = 'copy-alert-btn secondary';
 cancel.textContent = '取消';
-cancel.addEventListener('click', function(){ mask.remove(); });
+cancel.addEventListener('click', function(){ deactivateModal(); mask.remove(); });
 actions.appendChild(goGame);
 actions.appendChild(cancel);
 box.appendChild(icon);
@@ -14993,6 +15153,7 @@ box.appendChild(desc);
 box.appendChild(actions);
 mask.appendChild(box);
 document.body.appendChild(mask);
+activateModal(mask, function(){ deactivateModal(); mask.remove(); }, '未标记单词提示');
 }
 
 function shuffleArray(arr) {
@@ -15014,8 +15175,11 @@ title.className = 'copy-title';
 title.textContent = '抄写练习';
 var progress = document.createElement('div');
 progress.className = 'copy-progress';
+progress.setAttribute('role', 'status');
+progress.setAttribute('aria-live', 'polite');
 progress.textContent = '1 / ' + copyWordList.length;
 var exitBtn = document.createElement('button');
+exitBtn.type = 'button';
 exitBtn.className = 'copy-exit';
 exitBtn.textContent = '退出';
 exitBtn.setAttribute('aria-label', '退出抄写模式');
@@ -15031,6 +15195,7 @@ return copyOverlay;
 
 function startCopyDesktop() {
 var overlay = buildCopyOverlay();
+activateModal(overlay, endCopy, '抄写练习');
 
 var wordDisplay = document.createElement('div');
 wordDisplay.className = 'copy-word-display';
@@ -15052,6 +15217,9 @@ input.setAttribute('autocapitalize', 'off');
 input.setAttribute('autocomplete', 'off');
 input.setAttribute('autocorrect', 'off');
 input.setAttribute('spellcheck', 'false');
+input.setAttribute('aria-label', '输入当前显示的英文单词');
+hint.id = 'copyInputHint';
+input.setAttribute('aria-describedby', 'copyInputHint');
 overlay.appendChild(input);
 overlay._input = input;
 overlay._wordDisplay = wordDisplay;
@@ -15114,12 +15282,13 @@ var rotateHint = document.createElement('div');
 rotateHint.className = 'copy-rotate-hint';
 var icon = document.createElement('div');
 icon.className = 'rotate-icon';
-icon.textContent = '\u1F504';
+icon.textContent = '🔄';
 var p = document.createElement('p');
 p.textContent = '请将手机横屏使用';
 rotateHint.appendChild(icon);
 rotateHint.appendChild(p);
 var exitBtn = document.createElement('button');
+exitBtn.type = 'button';
 exitBtn.className = 'copy-exit';
 exitBtn.textContent = '退出';
 exitBtn.setAttribute('aria-label', '退出抄写模式');
@@ -15132,9 +15301,11 @@ var isPortrait = window.matchMedia('(orientation:portrait)').matches;
 if (isPortrait) {
 rotateHint.style.display = 'flex';
 overlay.style.display = 'none';
+activateModal(rotateHint, endCopy, '请将手机横屏使用');
 } else {
 rotateHint.style.display = 'none';
 overlay.style.display = 'flex';
+activateModal(overlay, endCopy, '手写抄写练习');
 setupCanvas();
 }
 }
@@ -15159,8 +15330,8 @@ canvasWrap.className = 'copy-canvas-wrap active';
 
 var canvas = document.createElement('canvas');
 canvas.id = 'copyCanvas';
-canvas.setAttribute('role', 'img');
-canvas.setAttribute('aria-label', '手写画板，在此书写单词');
+canvas.setAttribute('role', 'region');
+canvas.setAttribute('aria-label', '手写画板；键盘用户可使用“下一个”按钮继续练习');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 canvasWrap.appendChild(canvas);
@@ -15174,6 +15345,7 @@ meaningHint.className = 'copy-canvas-meaning';
 canvasWrap.appendChild(meaningHint);
 
 var nextBtn = document.createElement('button');
+nextBtn.type = 'button';
 nextBtn.className = 'copy-canvas-next';
 nextBtn.textContent = '\u2192 下一个';
 nextBtn.addEventListener('click', function(){
@@ -15293,6 +15465,7 @@ copyOverlay._input.focus();
 } else {
 desc.textContent = '点击下方按钮再来一次，或点击右上角退出按钮退出抄写模式';
 var restartBtn = document.createElement('button');
+restartBtn.type = 'button';
 restartBtn.className = 'copy-complete-btn';
 restartBtn.textContent = '再来一次';
 restartBtn.addEventListener('click', function(){
@@ -15333,6 +15506,7 @@ copyOverlay = null;
 }
 var rh = document.querySelector('.copy-rotate-hint');
 if (rh) rh.remove();
+deactivateModal();
 copyWordList = [];
 copyIdx = 0;
 copyDrawing = false;
@@ -15348,12 +15522,11 @@ front.className = 'essay-face';
 var back = document.createElement('div');
 back.className = 'essay-back';
 var essayHead = block.querySelector('.essay-head');
-while (block.firstChild) {
-if (block.firstChild === essayHead) break;
-front.appendChild(block.firstChild);
-}
 if (essayHead) {
 block.removeChild(essayHead);
+}
+while (block.firstChild) {
+front.appendChild(block.firstChild);
 }
 inner.appendChild(front);
 inner.appendChild(back);
@@ -15362,17 +15535,22 @@ if (essayHead) block.insertBefore(essayHead, inner);
 
 block.querySelectorAll('p').forEach(function(p, idx){
 var btn = document.createElement('button');
+btn.type = 'button';
 btn.className = 'para-btn';
 btn.textContent = '解析';
 btn.addEventListener('click', function(e){
 e.stopPropagation();
 var paraEl = block.querySelectorAll('.essay-face p')[idx];
 block._scrollReturnPara = paraEl;
+block._scrollReturnButton = btn;
 showAnalysis(block, back, idx);
 block.classList.add('flipped');
+front.setAttribute('aria-hidden', 'true');
+back.setAttribute('aria-hidden', 'false');
 setTimeout(function(){
 var top = block.getBoundingClientRect().top + window.pageYOffset - 80;
 window.scrollTo({ top: top, behavior:'smooth' });
+returnBtn.focus();
 }, 650);
 });
 var lastText = p.lastChild;
@@ -15387,21 +15565,28 @@ p.appendChild(btn);
 });
 
 var returnBtn = document.createElement('button');
+returnBtn.type = 'button';
 returnBtn.className = 'return-btn';
 returnBtn.textContent = '← 返回短文';
 returnBtn.addEventListener('click', function(e){
 e.stopPropagation();
 var targetPara = block._scrollReturnPara;
+var targetButton = block._scrollReturnButton;
 block._scrollReturnPara = null;
+block._scrollReturnButton = null;
 block.classList.remove('flipped');
+front.setAttribute('aria-hidden', 'false');
+back.setAttribute('aria-hidden', 'true');
 if (targetPara) {
 setTimeout(function(){
 var top = targetPara.getBoundingClientRect().top + window.pageYOffset - 80;
 window.scrollTo({ top: top, behavior:'smooth' });
+if (targetButton) targetButton.focus();
 }, 650);
 }
 });
 back.appendChild(returnBtn);
+back.setAttribute('aria-hidden', 'true');
 });
 }
 
@@ -15479,9 +15664,20 @@ inner.appendChild(back);
 card.appendChild(inner);
 card.setAttribute('role', 'button');
 card.setAttribute('tabindex', '0');
-card.setAttribute('aria-label', '单词卡片，点击翻转');
-card.addEventListener('click', function(e){
+card.setAttribute('aria-pressed', 'false');
+card.setAttribute('aria-label', vw.textContent.trim() + '，单词卡片，按回车或空格键翻转');
+function toggleCard() {
 card.classList.toggle('flipped');
+card.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
+}
+card.addEventListener('click', function(e){
+toggleCard();
+});
+card.addEventListener('keydown', function(e){
+if (e.key === 'Enter' || e.key === ' ') {
+e.preventDefault();
+toggleCard();
+}
 });
 });
 }
@@ -15494,33 +15690,52 @@ if (head.querySelector('.flip-toggle')) return;
 var toggle = document.createElement('div');
 toggle.className = 'flip-toggle';
 var btnEn = document.createElement('button');
+btnEn.type = 'button';
 btnEn.textContent = '英文';
 btnEn.dataset.mode = 'front';
 var btnCustom = document.createElement('button');
+btnCustom.type = 'button';
 btnCustom.textContent = '自定义';
 btnCustom.dataset.mode = 'custom';
 btnCustom.classList.add('active');
 var btnCn = document.createElement('button');
+btnCn.type = 'button';
 btnCn.textContent = '释义';
 btnCn.dataset.mode = 'back';
 toggle.appendChild(btnEn);
 toggle.appendChild(btnCustom);
 toggle.appendChild(btnCn);
 head.appendChild(toggle);
+toggle.setAttribute('role', 'group');
+toggle.setAttribute('aria-label', '词卡显示方式');
+toggle.querySelectorAll('button').forEach(function(button){
+button.setAttribute('aria-pressed', button.classList.contains('active') ? 'true' : 'false');
+});
 toggle.querySelectorAll('button').forEach(function(btn){
 btn.addEventListener('click', function(){
-toggle.querySelectorAll('button').forEach(function(b){ b.classList.remove('active'); });
+toggle.querySelectorAll('button').forEach(function(b){
+b.classList.remove('active');
+b.setAttribute('aria-pressed', 'false');
+});
 btn.classList.add('active');
+btn.setAttribute('aria-pressed', 'true');
 var mode = btn.dataset.mode;
 var cards = section.querySelectorAll('.vocab-card');
 if (mode === 'front') {
-cards.forEach(function(c){ c.classList.remove('flipped'); });
+cards.forEach(function(c){
+c.classList.remove('flipped');
+c.setAttribute('aria-pressed', 'false');
+});
 } else if (mode === 'back') {
-cards.forEach(function(c){ c.classList.add('flipped'); });
+cards.forEach(function(c){
+c.classList.add('flipped');
+c.setAttribute('aria-pressed', 'true');
+});
 }
 });
 });
 var gameBtn = document.createElement('button');
+gameBtn.type = 'button';
 gameBtn.className = 'game-btn';
 gameBtn.textContent = '游戏';
 gameBtn.addEventListener('click', function(){
@@ -15528,6 +15743,7 @@ startGame(section);
 });
 head.appendChild(gameBtn);
 var copyBtn = document.createElement('button');
+copyBtn.type = 'button';
 copyBtn.className = 'game-btn';
 copyBtn.textContent = '抄写';
 copyBtn.addEventListener('click', function(){
@@ -15547,8 +15763,34 @@ WordTales.WordPopup.init();
 document.querySelectorAll('.set-btn').forEach(function(btn){
 btn.addEventListener('click', function(){ WordTales.Navigation.switchSet(btn.dataset.set, btn); });
 });
-var firstSet = WordTales.Data.sets[0];
-if (firstSet) WordTales.Navigation.switchSet(firstSet.id, document.querySelector('.set-btn'));
+function switchToHash() {
+var targetId = '';
+try {
+targetId = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : '';
+} catch (e) {
+targetId = window.location.hash.slice(1);
+}
+var targetSet = null;
+WordTales.Data.sets.some(function(set){
+var containsTarget = set.id === targetId || set.columns.some(function(column){ return column.id === targetId; });
+if (containsTarget) targetSet = set;
+return containsTarget;
+});
+if (!targetSet) targetSet = WordTales.Data.sets[0];
+if (!targetSet) return;
+var targetButton = null;
+document.querySelectorAll('.set-btn').forEach(function(button){
+if (button.dataset.set === targetSet.id) targetButton = button;
+});
+WordTales.Navigation.switchSet(targetSet.id, targetButton);
+if (targetId && document.getElementById(targetId)) {
+requestAnimationFrame(function(){
+document.getElementById(targetId).scrollIntoView({ block: 'start' });
+});
+}
+}
+switchToHash();
+window.addEventListener('hashchange', switchToHash);
 WordTales.Progress.refresh();
 }
 
