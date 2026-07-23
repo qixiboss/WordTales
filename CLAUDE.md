@@ -28,7 +28,7 @@ All JavaScript lives in the global namespace `WordTales`, defined at line 1098 o
 DOMContentLoaded → WordTales.App.init
 ```
 
-That single call chains: render → initialize interactive modules → activate first vocab set → restore starred words from localStorage.
+That single call chains: render → initialize interactive modules → activate first vocab set → hydrate the learning profile from IndexedDB and migrate legacy localStorage data.
 
 ### Namespace layers
 
@@ -44,6 +44,7 @@ That single call chains: render → initialize interactive modules → activate 
 - **`Reader`** — Text-to-speech: voice selection (`pickBestVoice`), sentence splitting, word-by-word highlight synced to utterance boundaries, speed/pitch modulation by sentence type.
 - **`WordPopup`** — Click a highlighted word in an essay → lookup via `data-vocab-id` → show POS/meaning popover + play pronunciation via SpeechSynthesis.
 - **`Progress`** — Reads/writes `localStorage.starredWords`; syncs star state across main page and game.
+- **`LearningProgress`** — Tracks word/card/game/article/analysis activity, schedules spaced reviews, and renders daily recommendations plus the four-state memory heatmap.
 - **`Game`** — Full-screen drag-to-classify game. Floating word cards driven by `requestAnimationFrame`. Drag into "known" or "unknown" buckets; unknown words get starred.
 - **`CopyPractice`** — Spelling practice filtered to starred words in the current column. Desktop: keyboard input. Mobile/tablet: horizontal-scroll Canvas handwriting board.
 - **`Analysis`** — Toggles essay paragraphs to show Chinese translation + grammar notes with `<span class="keyword">` highlights.
@@ -75,6 +76,7 @@ GitHub Actions (`.github/workflows/jekyll-gh-pages.yml`) deploys on push to `mai
 
 - **Web Speech API** — TTS availability and voice quality are browser/OS-dependent. The app degrades gracefully when `SpeechSynthesis` is absent.
 - **Canvas 2D** — used only for mobile handwriting in CopyPractice.
-- **localStorage** — only key used is `starredWords` (JSON-serialized object).
+- **IndexedDB** — `wordtales-learning` stores the learning profile and append-only event records asynchronously.
+- **localStorage** — `starredWords` remains for star compatibility; `wordtales.learning.v1` is now only a migration source and IndexedDB fallback.
 - **CSS** — uses custom properties (defined on `:root`), 3D transforms for card flips, `position: sticky` for TOC, media queries for responsive layout, and print styles.
 - **No external fonts loaded at runtime** — the CSS specifies `Lora`, `WorkSans`, etc. but these are expected to be system-installed or unavailable; fallback stacks are provided.

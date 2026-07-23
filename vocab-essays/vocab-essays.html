@@ -1088,8 +1088,361 @@ animation-iteration-count:1!important;
 transition-duration:.01ms!important;
 scroll-behavior:auto!important}
 }
+/* Learning progress dashboard */
+.progress-entry {
+display:inline-flex;
+align-items:center;
+gap:.45rem;
+margin-top:1.1rem;
+padding:.58rem 1rem;
+border:1px solid rgba(251,249,244,.5);
+border-radius:999px;
+background:rgba(251,249,244,.12);
+color:#fff;
+font:600 .82rem var(--sans);
+cursor:pointer;
+transition:background .2s,transform .2s}
+.progress-entry:hover {
+background:rgba(251,249,244,.22);
+transform:translateY(-1px)}
+.progress-entry:disabled {
+opacity:.65;
+cursor:wait}
+.progress-entry .progress-entry-dot {
+width:.55rem;
+height:.55rem;
+border-radius:50%;
+background:#f1c75b;
+box-shadow:0 0 0 4px rgba(241,199,91,.15)}
+.daily-reminder {
+max-width:860px;
+margin:1rem auto 0;
+padding:.85rem 1rem;
+border:1px solid #dbc99d;
+border-radius:14px;
+background:#fff8e7;
+color:#5f4b19;
+display:flex;
+align-items:center;
+gap:.8rem;
+box-shadow:0 8px 24px rgba(67,50,16,.08)}
+.daily-reminder[hidden] {
+display:none}
+.daily-reminder-copy {
+flex:1;
+font-size:.82rem}
+.daily-reminder-copy strong {
+display:block;
+color:#3e3216;
+font-size:.9rem}
+.daily-reminder button {
+border:0;
+border-radius:999px;
+padding:.45rem .8rem;
+background:#805d00;
+color:#fff;
+font:600 .75rem var(--sans);
+cursor:pointer}
+.daily-reminder .reminder-dismiss {
+background:transparent;
+color:#6f6555;
+padding:.35rem}
+.progress-overlay {
+position:fixed;
+inset:0;
+z-index:12000;
+display:none;
+align-items:stretch;
+justify-content:flex-end;
+background:rgba(20,27,29,.55);
+backdrop-filter:blur(5px)}
+.progress-overlay.active {
+display:flex}
+.progress-panel {
+width:min(920px,100%);
+height:100%;
+overflow:auto;
+background:#f7f4ed;
+box-shadow:-24px 0 70px rgba(19,27,30,.22);
+padding:1.5rem clamp(1rem,3vw,2.4rem) 3rem}
+.progress-panel-head {
+display:flex;
+align-items:flex-start;
+justify-content:space-between;
+gap:1rem;
+padding-bottom:1.2rem;
+border-bottom:1px solid var(--rule)}
+.progress-eyebrow {
+color:var(--accent);
+font-size:.72rem;
+font-weight:800;
+letter-spacing:.16em;
+text-transform:uppercase}
+.progress-panel h2 {
+font:700 clamp(1.65rem,4vw,2.35rem) var(--serif);
+line-height:1.2;
+margin:.25rem 0}
+.progress-date {
+color:var(--muted);
+font-size:.8rem}
+.progress-close {
+width:2.5rem;
+height:2.5rem;
+border:1px solid var(--rule);
+border-radius:50%;
+background:#fff;
+color:var(--ink);
+font-size:1.25rem;
+cursor:pointer}
+.progress-kpis {
+display:grid;
+grid-template-columns:repeat(4,minmax(0,1fr));
+gap:.7rem;
+margin:1.2rem 0}
+.progress-kpi {
+min-height:104px;
+padding:1rem;
+border:1px solid var(--rule);
+border-radius:16px;
+background:#fff}
+.progress-kpi-value {
+font:700 1.8rem var(--serif);
+color:var(--accent)}
+.progress-kpi-label {
+font-size:.75rem;
+color:var(--muted)}
+.progress-section {
+margin-top:1.5rem}
+.progress-section-head {
+display:flex;
+align-items:end;
+justify-content:space-between;
+gap:1rem;
+margin-bottom:.75rem}
+.progress-section h3 {
+font:700 1.15rem var(--serif)}
+.progress-section-note {
+color:var(--muted);
+font-size:.74rem}
+.progress-plan-grid {
+display:grid;
+grid-template-columns:repeat(3,minmax(0,1fr));
+gap:.75rem}
+.progress-plan-card {
+border:1px solid var(--rule);
+border-radius:16px;
+background:#fff;
+padding:1rem;
+min-height:160px}
+.progress-plan-card h4 {
+font-size:.82rem;
+color:var(--muted);
+margin-bottom:.6rem}
+.progress-plan-list {
+list-style:none;
+display:grid;
+gap:.38rem}
+.progress-plan-item {
+display:flex;
+align-items:center;
+gap:.5rem;
+width:100%;
+padding:.42rem .5rem;
+border:0;
+border-radius:9px;
+background:var(--bg);
+color:var(--ink);
+font:600 .76rem var(--sans);
+text-align:left;
+cursor:pointer}
+.progress-plan-item:hover {
+background:var(--accent-soft);
+color:var(--accent)}
+.progress-plan-item small {
+margin-left:auto;
+color:var(--muted);
+font-weight:500}
+.progress-empty {
+color:var(--muted);
+font-size:.77rem;
+line-height:1.7}
+.heatmap-controls {
+display:flex;
+align-items:center;
+gap:.5rem}
+.heatmap-controls select {
+border:1px solid var(--rule);
+border-radius:10px;
+background:#fff;
+padding:.42rem .65rem;
+color:var(--ink);
+font:600 .75rem var(--sans)}
+.memory-legend {
+display:flex;
+flex-wrap:wrap;
+gap:.5rem 1rem;
+margin:.65rem 0 .85rem;
+font-size:.72rem;
+color:var(--muted)}
+.memory-legend span {
+display:inline-flex;
+align-items:center;
+gap:.35rem}
+.memory-dot {
+width:.7rem;
+height:.7rem;
+border-radius:3px}
+.memory-dot.green,.memory-cell.green {background:#b9dfc4;color:#1c5732;border-color:#90c9a0}
+.memory-dot.yellow,.memory-cell.yellow {background:#f4dfa0;color:#6f5310;border-color:#dfc56e}
+.memory-dot.red,.memory-cell.red {background:#efb3ad;color:#782921;border-color:#d88e87}
+.memory-dot.gray,.memory-cell.gray {background:#e4e1da;color:#777168;border-color:#cfcbc2}
+.memory-heatmap {
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(76px,1fr));
+gap:.42rem;
+padding:.8rem;
+border:1px solid var(--rule);
+border-radius:16px;
+background:#fff}
+.memory-cell {
+min-height:54px;
+padding:.45rem;
+border:1px solid;
+border-radius:10px;
+font:700 .68rem var(--sans);
+line-height:1.2;
+text-align:left;
+overflow:hidden;
+cursor:pointer}
+.memory-cell span {
+display:block;
+margin-top:.25rem;
+font-size:.58rem;
+font-weight:500;
+opacity:.8}
+.progress-footnote {
+margin-top:1rem;
+color:var(--muted);
+font-size:.7rem;
+line-height:1.6}
+.vocab-card.progress-jump-float {
+z-index:30;
+animation:progressJumpFloat 1.55s cubic-bezier(.2,.8,.2,1)}
+@keyframes progressJumpFloat {
+0% {
+transform:translateY(0) scale(1);
+box-shadow:0 0 0 0 rgba(27,94,114,0)}
+24% {
+transform:translateY(-14px) scale(1.06);
+box-shadow:0 14px 28px rgba(27,94,114,.22),0 0 0 4px rgba(27,94,114,.2)}
+58% {
+transform:translateY(-7px) scale(1.025);
+box-shadow:0 9px 20px rgba(27,94,114,.16),0 0 0 3px rgba(27,94,114,.12)}
+100% {
+transform:translateY(0) scale(1);
+box-shadow:0 0 0 0 rgba(27,94,114,0)}
+}
+@media(max-width:700px) {
+.progress-entry {
+min-height:44px;
+margin-top:.85rem;
+padding:.52rem .9rem}
+.daily-reminder {
+margin:.7rem .75rem 0;
+padding:.8rem;
+align-items:center;
+flex-wrap:wrap;
+gap:.55rem}
+.daily-reminder-copy {
+flex:1 0 100%}
+.daily-reminder button {
+min-height:42px;
+padding:.5rem .9rem}
+.daily-reminder .reminder-dismiss {
+margin-left:auto;
+padding:.5rem .65rem}
+.progress-overlay {
+align-items:flex-end}
+.progress-panel {
+width:100%;
+height:100dvh;
+padding:0 1rem calc(1.5rem + env(safe-area-inset-bottom));
+overscroll-behavior:contain}
+.progress-panel-head {
+position:sticky;
+top:0;
+z-index:5;
+margin:0 -1rem;
+padding:calc(.85rem + env(safe-area-inset-top)) 1rem .85rem;
+background:rgba(247,244,237,.96);
+backdrop-filter:blur(12px)}
+.progress-panel h2 {
+font-size:1.65rem}
+.progress-close {
+flex:0 0 44px;
+width:44px;
+height:44px}
+.progress-kpis {
+grid-template-columns:repeat(2,minmax(0,1fr));
+gap:.55rem;
+margin:1rem 0}
+.progress-kpi {
+min-height:92px;
+padding:.8rem}
+.progress-kpi-value {
+font-size:1.55rem}
+.progress-plan-grid {
+grid-template-columns:1fr}
+.progress-plan-card {
+min-height:auto;
+padding:.85rem}
+.progress-plan-item {
+min-height:44px;
+padding:.58rem .65rem;
+font-size:.8rem}
+.progress-section-head {
+align-items:flex-start;
+flex-direction:column;
+gap:.65rem}
+.heatmap-controls {
+width:100%}
+.heatmap-controls select {
+min-height:44px;
+flex:1;
+font-size:.8rem}
+.memory-legend {
+display:grid;
+grid-template-columns:repeat(2,minmax(0,1fr));
+gap:.55rem .7rem}
+.memory-heatmap {
+grid-template-columns:repeat(4,minmax(0,1fr));
+gap:.35rem;
+padding:.55rem}
+.memory-cell {
+min-width:0;
+min-height:58px;
+padding:.42rem .35rem;
+font-size:.66rem;
+word-break:break-word}
+.memory-cell span {
+font-size:.55rem}
+.vocab-card.progress-jump-float {
+animation-duration:1.35s}
+}
+@media(max-width:380px) {
+.progress-panel {
+padding-left:.75rem;
+padding-right:.75rem}
+.progress-panel-head {
+margin-left:-.75rem;
+margin-right:-.75rem;
+padding-left:.75rem;
+padding-right:.75rem}
+.memory-heatmap {
+grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 @media print {
-.toc {
+.toc,.progress-entry,.daily-reminder,.progress-overlay {
 display:none}
 .cover {
 padding:2rem}
@@ -1113,9 +1466,14 @@ display:none}
     <h1>词汇记忆短文集</h1>
     <div class="set-switcher" id="setSwitcher"></div>
     <p class="set-meta" id="setMeta" aria-live="polite"></p>
+    <button type="button" class="progress-entry" id="progressEntry">
+      <span class="progress-entry-dot" aria-hidden="true"></span>
+      今日学习进度
+    </button>
   </div>
 </header>
 <nav class="toc" id="toc" aria-label="栏目目录"></nav>
+<aside class="daily-reminder" id="dailyReminder" hidden aria-live="polite"></aside>
 <main id="appContent"></main>
 <footer>
 <p>
@@ -14175,6 +14533,817 @@ WordTales.Renderer = (function() {
 
 <script>
 /* ============================================================
+ * Module: LearningProgress
+ * 本地学习档案、间隔复习调度、每日建议与记忆热力图。
+ * 优先使用 IndexedDB 异步保存；localStorage 仅用于兼容与降级。
+ * ============================================================ */
+WordTales.LearningProgress = (function() {
+  var STORAGE_KEY = 'wordtales.learning.v1';
+  var MIGRATION_KEY = 'wordtales.learning.indexeddb-migrated';
+  var DB_NAME = 'wordtales-learning';
+  var DB_VERSION = 1;
+  var MAX_EVENTS = 3000;
+  var data = null;
+  var database = null;
+  var persistenceMode = 'localStorage';
+  var profileSaveTimer = null;
+  var isReady = false;
+  var pendingOperations = [];
+  var wordIndex = Object.create(null);
+  var wordByText = Object.create(null);
+  var columnIndex = Object.create(null);
+  var paragraphIndex = Object.create(null);
+  var overlay = null;
+  var panel = null;
+  var heatmapSetId = '';
+  var articleObserver = null;
+  var currentDay = '';
+
+  function nowIso() { return new Date().toISOString(); }
+  function dayKey(date) {
+    var d = date || new Date();
+    var y = d.getFullYear();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2);
+    var day = ('0' + d.getDate()).slice(-2);
+    return y + '-' + m + '-' + day;
+  }
+  function addDays(date, days) {
+    return new Date(date.getTime() + days * 86400000);
+  }
+  function endOfToday() {
+    var d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  function freshData() {
+    return {
+      version: 1,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      words: {},
+      articles: {},
+      analyses: {},
+      days: {},
+      reminders: { lastShown: '', notifications: false },
+      events: []
+    };
+  }
+  function normalizeData(candidate) {
+    var store = candidate && candidate.version === 1 ? candidate : freshData();
+    store.words = store.words || {};
+    store.articles = store.articles || {};
+    store.analyses = store.analyses || {};
+    store.days = store.days || {};
+    store.reminders = store.reminders || { lastShown: '', notifications: false };
+    store.events = Array.isArray(store.events) ? store.events : [];
+    store.updatedAt = store.updatedAt || store.createdAt || nowIso();
+    return store;
+  }
+  function load() {
+    if (data) return data;
+    try {
+      data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    } catch (e) {
+      data = null;
+    }
+    data = normalizeData(data);
+    return data;
+  }
+  function requestToPromise(request) {
+    return new Promise(function(resolve, reject) {
+      request.onsuccess = function() { resolve(request.result); };
+      request.onerror = function() { reject(request.error || new Error('IndexedDB request failed')); };
+    });
+  }
+  function openDatabase() {
+    if (!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
+    if (database) return Promise.resolve(database);
+    return new Promise(function(resolve, reject) {
+      var request = window.indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = function() {
+        var db = request.result;
+        if (!db.objectStoreNames.contains('profiles')) {
+          db.createObjectStore('profiles', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('events')) {
+          var events = db.createObjectStore('events', { keyPath: 'id', autoIncrement: true });
+          events.createIndex('day', 'day', { unique: false });
+          events.createIndex('type', 'type', { unique: false });
+          events.createIndex('at', 'at', { unique: false });
+        }
+      };
+      request.onsuccess = function() {
+        database = request.result;
+        database.onversionchange = function() {
+          database.close();
+          database = null;
+        };
+        resolve(database);
+      };
+      request.onerror = function() {
+        reject(request.error || new Error('Unable to open IndexedDB'));
+      };
+      request.onblocked = function() {
+        reject(new Error('IndexedDB upgrade blocked'));
+      };
+    });
+  }
+  function profileSnapshot() {
+    var snapshot = JSON.parse(JSON.stringify(load()));
+    delete snapshot.events;
+    return snapshot;
+  }
+  function writeProfileNow() {
+    if (persistenceMode !== 'indexedDB' || !database) return Promise.resolve();
+    var transaction = database.transaction('profiles', 'readwrite');
+    var request = transaction.objectStore('profiles').put({
+      id: 'current',
+      updatedAt: load().updatedAt,
+      data: profileSnapshot()
+    });
+    return requestToPromise(request);
+  }
+  function save() {
+    var store = load();
+    store.updatedAt = nowIso();
+    if (persistenceMode === 'indexedDB' && database) {
+      if (profileSaveTimer) clearTimeout(profileSaveTimer);
+      profileSaveTimer = setTimeout(function() {
+        profileSaveTimer = null;
+        writeProfileNow().catch(function() {
+          persistenceMode = 'localStorage';
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(load())); } catch (e) {}
+        });
+      }, 180);
+      return;
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch (e) {}
+  }
+  function addEventToDatabase(event) {
+    if (!database || persistenceMode !== 'indexedDB') return;
+    try {
+      var transaction = database.transaction('events', 'readwrite');
+      transaction.objectStore('events').add(event);
+    } catch (e) {}
+  }
+  function migrateFallbackToDatabase(db, fallback) {
+    return new Promise(function(resolve, reject) {
+      var transaction = db.transaction(['profiles', 'events'], 'readwrite');
+      transaction.oncomplete = function() { resolve(); };
+      transaction.onerror = function() { reject(transaction.error || new Error('IndexedDB migration failed')); };
+      transaction.onabort = function() { reject(transaction.error || new Error('IndexedDB migration aborted')); };
+      var snapshot = JSON.parse(JSON.stringify(fallback));
+      var legacyEvents = Array.isArray(snapshot.events) ? snapshot.events : [];
+      delete snapshot.events;
+      transaction.objectStore('profiles').put({
+        id: 'current',
+        updatedAt: snapshot.updatedAt || nowIso(),
+        data: snapshot
+      });
+      legacyEvents.forEach(function(event) {
+        transaction.objectStore('events').add(event);
+      });
+    });
+  }
+  function hydrate() {
+    var rawLocal = null;
+    try { rawLocal = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+    var validLocalProfile = null;
+    try {
+      validLocalProfile = rawLocal ? JSON.parse(rawLocal) : null;
+    } catch (e) {}
+    var fallback = load();
+    return openDatabase().then(function(db) {
+      return requestToPromise(db.transaction('profiles', 'readonly').objectStore('profiles').get('current'))
+        .then(function(savedProfile) {
+          var localIsNewer = validLocalProfile && validLocalProfile.version === 1 && (!savedProfile ||
+            new Date(fallback.updatedAt).getTime() > new Date(savedProfile.updatedAt || 0).getTime());
+          if (savedProfile && !localIsNewer) {
+            data = normalizeData(savedProfile.data);
+            data.events = [];
+            return null;
+          }
+          return migrateFallbackToDatabase(db, fallback).then(function() {
+            data = normalizeData(fallback);
+            data.events = [];
+          });
+        }).then(function() {
+          persistenceMode = 'indexedDB';
+          try {
+            localStorage.setItem(MIGRATION_KEY, '1');
+            if (typeof localStorage.removeItem === 'function') localStorage.removeItem(STORAGE_KEY);
+          } catch (e) {}
+        });
+    }).catch(function() {
+      persistenceMode = 'localStorage';
+      data = normalizeData(fallback);
+    });
+  }
+  function ensureDay() {
+    var key = dayKey();
+    var store = load();
+    if (!store.days[key]) {
+      store.days[key] = {
+        wordClicks: 0,
+        cardFlips: 0,
+        known: 0,
+        unfamiliar: 0,
+        articles: 0,
+        analyses: 0
+      };
+    }
+    return store.days[key];
+  }
+  function logEvent(type, targetId, meta) {
+    var store = load();
+    var event = {
+      at: nowIso(),
+      day: dayKey(),
+      type: type,
+      targetId: targetId,
+      meta: meta || {}
+    };
+    store.events.push(event);
+    if (store.events.length > MAX_EVENTS) {
+      store.events.splice(0, store.events.length - MAX_EVENTS);
+    }
+    addEventToDatabase(event);
+  }
+  function buildIndexes() {
+    WordTales.Data.sets.forEach(function(set) {
+      set.columns.forEach(function(column) {
+        columnIndex[column.id] = {
+          column: column,
+          set: set
+        };
+        column.words.forEach(function(word) {
+          wordIndex[word.id] = {
+            word: word,
+            column: column,
+            set: set
+          };
+          var key = word.word.toLowerCase();
+          if (!wordByText[key]) wordByText[key] = word.id;
+        });
+        column.paragraphs.forEach(function(paragraph) {
+          paragraphIndex[paragraph.id] = {
+            paragraph: paragraph,
+            column: column,
+            set: set
+          };
+        });
+      });
+    });
+  }
+  function migrateStarredWords() {
+    var store = load();
+    if (store.migratedStarredWords) return;
+    var starred = [];
+    try {
+      starred = JSON.parse(localStorage.getItem('starredWords') || '[]');
+    } catch (e) {}
+    var timestamp = nowIso();
+    starred.forEach(function(text) {
+      var id = wordByText[String(text).toLowerCase()];
+      if (!id || store.words[id]) return;
+      store.words[id] = {
+        firstSeen: timestamp,
+        lastSeen: timestamp,
+        lastReview: timestamp,
+        nextReview: timestamp,
+        intervalDays: 1,
+        stabilityDays: .75,
+        clickCount: 0,
+        cardFlipCount: 0,
+        reviewCount: 1,
+        correctCount: 0,
+        unfamiliarCount: 1,
+        lapses: 1,
+        failureStreak: 1,
+        lastAction: 'unknown'
+      };
+    });
+    store.migratedStarredWords = true;
+    save();
+  }
+  function ensureWordRecord(id) {
+    var store = load();
+    var record = store.words[id];
+    if (!record) {
+      record = store.words[id] = {
+        firstSeen: nowIso(),
+        lastSeen: nowIso(),
+        lastReview: '',
+        nextReview: '',
+        intervalDays: 0,
+        stabilityDays: 1,
+        clickCount: 0,
+        cardFlipCount: 0,
+        reviewCount: 0,
+        correctCount: 0,
+        unfamiliarCount: 0,
+        lapses: 0,
+        failureStreak: 0,
+        lastAction: ''
+      };
+    }
+    return record;
+  }
+  function scheduleFirstReview(record, baseDate) {
+    if (!record.nextReview) {
+      record.intervalDays = 1;
+      record.stabilityDays = Math.max(record.stabilityDays || 1, 1);
+      record.nextReview = addDays(baseDate, 1).toISOString();
+    }
+  }
+  function queueUntilReady(operation) {
+    if (isReady) return false;
+    pendingOperations.push(operation);
+    return true;
+  }
+  function trackWord(id, action, meta) {
+    if (queueUntilReady(function() { trackWord(id, action, meta); })) return;
+    if (!wordIndex[id]) return;
+    var record = ensureWordRecord(id);
+    var timestamp = new Date();
+    var timestampIso = timestamp.toISOString();
+    var today = ensureDay();
+    record.lastSeen = timestampIso;
+    record.lastAction = action;
+    if (action === 'click') {
+      record.clickCount++;
+      today.wordClicks++;
+      scheduleFirstReview(record, timestamp);
+    } else if (action === 'card') {
+      record.cardFlipCount++;
+      today.cardFlips++;
+      scheduleFirstReview(record, timestamp);
+    } else if (action === 'unknown') {
+      record.reviewCount++;
+      record.unfamiliarCount++;
+      record.lapses++;
+      record.failureStreak = (record.failureStreak || 0) + 1;
+      record.lastReview = timestampIso;
+      record.intervalDays = .5;
+      record.stabilityDays = Math.max(.45, (record.stabilityDays || 1) * .62);
+      record.nextReview = addDays(timestamp, .5).toISOString();
+      today.unfamiliar++;
+    } else if (action === 'known' || action === 'review') {
+      record.reviewCount++;
+      record.correctCount++;
+      record.failureStreak = 0;
+      record.lastReview = timestampIso;
+      var previousInterval = Math.max(1, record.intervalDays || 1);
+      var growth = record.correctCount === 1 ? 2 : Math.min(2.5, 1.75 + record.correctCount * .06);
+      record.intervalDays = Math.min(90, previousInterval * growth);
+      record.stabilityDays = Math.max(record.intervalDays, (record.stabilityDays || 1) * 1.55);
+      record.nextReview = addDays(timestamp, record.intervalDays).toISOString();
+      today.known++;
+    }
+    logEvent('word_' + action, id, meta);
+    save();
+    refreshOpenDashboard();
+  }
+  function trackArticle(columnId) {
+    if (queueUntilReady(function() { trackArticle(columnId); })) return;
+    if (!columnIndex[columnId]) return;
+    var store = load();
+    var timestamp = nowIso();
+    var record = store.articles[columnId];
+    if (!record) {
+      record = store.articles[columnId] = {
+        firstViewed: timestamp,
+        lastViewed: timestamp,
+        viewCount: 0,
+        lastViewedDay: ''
+      };
+    }
+    record.lastViewed = timestamp;
+    if (record.lastViewedDay !== dayKey()) {
+      record.viewCount++;
+      record.lastViewedDay = dayKey();
+      ensureDay().articles++;
+      logEvent('article_view', columnId);
+    }
+    save();
+    refreshOpenDashboard();
+  }
+  function trackAnalysis(paragraphId) {
+    if (queueUntilReady(function() { trackAnalysis(paragraphId); })) return;
+    if (!paragraphIndex[paragraphId]) return;
+    var store = load();
+    var timestamp = nowIso();
+    var record = store.analyses[paragraphId];
+    if (!record) {
+      record = store.analyses[paragraphId] = {
+        firstOpened: timestamp,
+        lastOpened: timestamp,
+        openCount: 0
+      };
+    }
+    record.lastOpened = timestamp;
+    record.openCount++;
+    ensureDay().analyses++;
+    logEvent('analysis_open', paragraphId);
+    save();
+    refreshOpenDashboard();
+  }
+  function recallProbability(id, at) {
+    var record = load().words[id];
+    if (!record) return null;
+    var anchor = record.lastReview || record.lastSeen || record.firstSeen;
+    if (!anchor) return null;
+    var elapsed = Math.max(0, ((at || new Date()).getTime() - new Date(anchor).getTime()) / 86400000);
+    var stability = Math.max(.4, record.stabilityDays || record.intervalDays || 1);
+    var probability = Math.exp(-elapsed / stability);
+    if (record.lapses) probability *= Math.pow(.94, Math.min(record.lapses, 6));
+    return Math.max(0, Math.min(1, probability));
+  }
+  function memoryState(id, at) {
+    var record = load().words[id];
+    if (!record) return 'gray';
+    var now = at || new Date();
+    var probability = recallProbability(id, now);
+    var next = record.nextReview ? new Date(record.nextReview) : null;
+    if ((next && next <= now) || (record.failureStreak || 0) >= 2) return 'red';
+    if ((next && next.getTime() - now.getTime() <= 1.5 * 86400000) || probability < .72) return 'yellow';
+    return 'green';
+  }
+  function allWords() {
+    var result = [];
+    WordTales.Data.sets.forEach(function(set) {
+      set.columns.forEach(function(column) {
+        column.words.forEach(function(word) {
+          result.push({ word: word, column: column, set: set });
+        });
+      });
+    });
+    return result;
+  }
+  function dueWords() {
+    var deadline = endOfToday();
+    return allWords().filter(function(item) {
+      var record = load().words[item.word.id];
+      if (!record || !record.nextReview) return false;
+      return new Date(record.nextReview) <= deadline || (record.failureStreak || 0) >= 2;
+    }).sort(function(a, b) {
+      var ar = load().words[a.word.id];
+      var br = load().words[b.word.id];
+      return new Date(ar.nextReview).getTime() - new Date(br.nextReview).getTime();
+    });
+  }
+  function newWords(limit) {
+    return allWords().filter(function(item) {
+      return !load().words[item.word.id];
+    }).slice(0, limit || 8);
+  }
+  function revisitColumns(due) {
+    var counts = {};
+    due.forEach(function(item) {
+      counts[item.column.id] = (counts[item.column.id] || 0) + 1;
+    });
+    return Object.keys(counts).map(function(id) {
+      return {
+        info: columnIndex[id],
+        count: counts[id],
+        article: load().articles[id] || null
+      };
+    }).sort(function(a, b) {
+      return b.count - a.count;
+    });
+  }
+  function formatPercent(value) {
+    return value == null ? '—' : Math.round(value * 100) + '%';
+  }
+  function activeSetId() {
+    var active = document.querySelector('.set-content.active');
+    return active ? active.id : (WordTales.Data.sets[0] ? WordTales.Data.sets[0].id : '');
+  }
+  function floatJumpTarget(target) {
+    if (!target) return;
+    if (target._progressJumpTimer) clearTimeout(target._progressJumpTimer);
+    target.classList.remove('progress-jump-float');
+    void target.offsetWidth;
+    target.classList.add('progress-jump-float');
+    try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
+    target._progressJumpTimer = setTimeout(function() {
+      target.classList.remove('progress-jump-float');
+      target._progressJumpTimer = null;
+    }, 1650);
+  }
+  function navigateTo(item) {
+    var setId = item.set.id;
+    var button = document.querySelector('.set-btn[data-set="' + setId + '"]');
+    if (WordTales.Navigation) WordTales.Navigation.switchSet(setId, button);
+    closeDashboard();
+    setTimeout(function() {
+      var section = document.getElementById(item.column.id);
+      if (!section) return;
+      var target = item.word
+        ? section.querySelector('.vocab-card[data-vocab-id="' + item.word.id + '"]')
+        : section;
+      if (!target) target = section;
+      var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({
+        behavior: reducedMotion ? 'auto' : 'smooth',
+        block: item.word ? 'center' : 'start'
+      });
+      if (item.word) {
+        setTimeout(function() { floatJumpTarget(target); }, reducedMotion ? 30 : 420);
+      }
+    }, 80);
+  }
+  function makePlanItem(label, detail, item) {
+    var li = document.createElement('li');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'progress-plan-item';
+    button.textContent = label;
+    if (detail) {
+      var small = document.createElement('small');
+      small.textContent = detail;
+      button.appendChild(small);
+    }
+    button.addEventListener('click', function() { navigateTo(item); });
+    li.appendChild(button);
+    return li;
+  }
+  function fillPlanList(list, items, mapper, emptyText) {
+    list.innerHTML = '';
+    if (!items.length) {
+      var empty = document.createElement('li');
+      empty.className = 'progress-empty';
+      empty.textContent = emptyText;
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(function(item) {
+      var mapped = mapper(item);
+      list.appendChild(makePlanItem(mapped.label, mapped.detail, mapped.target));
+    });
+  }
+  function renderHeatmap() {
+    var grid = panel.querySelector('#memoryHeatmap');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var selectedSet = WordTales.Data.getSet(heatmapSetId) || WordTales.Data.sets[0];
+    if (!selectedSet) return;
+    selectedSet.columns.forEach(function(column) {
+      column.words.forEach(function(word) {
+        var state = memoryState(word.id);
+        var probability = recallProbability(word.id);
+        var cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'memory-cell ' + state;
+        cell.textContent = word.word;
+        var sub = document.createElement('span');
+        sub.textContent = state === 'gray' ? column.title + ' · 未学习' : column.title + ' · ' + formatPercent(probability);
+        cell.appendChild(sub);
+        cell.title = word.word + ' · ' + word.meaning + ' · ' + (state === 'gray' ? '尚未学习' : '预计回忆率 ' + formatPercent(probability));
+        cell.setAttribute('aria-label', cell.title);
+        cell.addEventListener('click', function() {
+          navigateTo({ set: selectedSet, column: column, word: word });
+        });
+        grid.appendChild(cell);
+      });
+    });
+  }
+  function renderDashboard() {
+    if (!panel) return;
+    var store = load();
+    var due = dueWords();
+    var unseen = newWords(8);
+    var revisit = revisitColumns(due).slice(0, 6);
+    var learnedIds = Object.keys(store.words).filter(function(id) { return !!wordIndex[id]; });
+    var articleCount = Object.keys(store.articles).filter(function(id) { return !!columnIndex[id]; }).length;
+    var analysisCount = Object.keys(store.analyses).filter(function(id) { return !!paragraphIndex[id]; }).length;
+    var probabilities = learnedIds.map(function(id) { return recallProbability(id); }).filter(function(p) { return p != null; });
+    var avg = probabilities.length ? probabilities.reduce(function(sum, p) { return sum + p; }, 0) / probabilities.length : null;
+    var dateFormat;
+    try {
+      dateFormat = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
+    } catch (e) {
+      dateFormat = dayKey();
+    }
+    panel.innerHTML =
+      '<div class="progress-panel-head">' +
+        '<div><p class="progress-eyebrow">Learning pulse</p><h2>你的学习进度</h2><p class="progress-date">' + dateFormat + ' · 今日计划已根据记忆状态更新</p></div>' +
+        '<button type="button" class="progress-close" aria-label="关闭进度面板">×</button>' +
+      '</div>' +
+      '<div class="progress-kpis">' +
+        '<div class="progress-kpi"><div class="progress-kpi-value">' + learnedIds.length + '</div><div class="progress-kpi-label">已接触单词</div></div>' +
+        '<div class="progress-kpi"><div class="progress-kpi-value">' + due.length + '</div><div class="progress-kpi-label">今天需复习</div></div>' +
+        '<div class="progress-kpi"><div class="progress-kpi-value">' + (avg == null ? '—' : Math.round(avg * 100) + '%') + '</div><div class="progress-kpi-label">预计平均回忆率</div></div>' +
+        '<div class="progress-kpi"><div class="progress-kpi-value">' + articleCount + '<small> / ' + analysisCount + '</small></div><div class="progress-kpi-label">浏览文章 / 段落解析</div></div>' +
+      '</div>' +
+      '<section class="progress-section">' +
+        '<div class="progress-section-head"><div><h3>今天学什么</h3><p class="progress-section-note">先复习到期内容，再开始少量新内容</p></div></div>' +
+        '<div class="progress-plan-grid">' +
+          '<article class="progress-plan-card"><h4>到期单词 · ' + due.length + '</h4><ul class="progress-plan-list" id="duePlan"></ul></article>' +
+          '<article class="progress-plan-card"><h4>重读语境 · ' + revisit.length + '</h4><ul class="progress-plan-list" id="articlePlan"></ul></article>' +
+          '<article class="progress-plan-card"><h4>建议新学 · ' + unseen.length + '</h4><ul class="progress-plan-list" id="newPlan"></ul></article>' +
+        '</div>' +
+      '</section>' +
+      '<section class="progress-section">' +
+        '<div class="progress-section-head"><div><h3>记忆热力图</h3><p class="progress-section-note">颜色由复习时间、遗忘次数和时间衰减共同决定</p></div><div class="heatmap-controls"><label for="heatmapSet">词集</label><select id="heatmapSet"></select></div></div>' +
+        '<div class="memory-legend"><span><i class="memory-dot green"></i>绿色：当前回忆概率较高</span><span><i class="memory-dot yellow"></i>黄色：即将需要复习</span><span><i class="memory-dot red"></i>红色：已到期或多次遗忘</span><span><i class="memory-dot gray"></i>灰色：尚未学习</span></div>' +
+        '<div class="memory-heatmap" id="memoryHeatmap"></div>' +
+        '<p class="progress-footnote">进度仅保存在当前浏览器。' + (persistenceMode === 'indexedDB' ? '学习档案与逐次记录通过 IndexedDB 异步保存。' : '当前浏览器不支持 IndexedDB，已降级使用 localStorage。') + '每日提醒会在当天首次打开 WordTales 时出现；浏览器保持打开时，跨天也会自动刷新。分类为“比较认识”会延长复习间隔，分类为“不太认识”会缩短间隔。</p>' +
+      '</section>';
+    panel.querySelector('.progress-close').addEventListener('click', closeDashboard);
+    fillPlanList(panel.querySelector('#duePlan'), due.slice(0, 8), function(item) {
+      return {
+        label: item.word.word,
+        detail: formatPercent(recallProbability(item.word.id)),
+        target: item
+      };
+    }, '今天没有到期单词，可以继续巩固或学习新内容。');
+    fillPlanList(panel.querySelector('#articlePlan'), revisit, function(item) {
+      return {
+        label: item.info.column.theme.zh,
+        detail: item.count + ' 个到期词',
+        target: { set: item.info.set, column: item.info.column }
+      };
+    }, '完成更多单词学习后，这里会推荐需要重读的短文。');
+    fillPlanList(panel.querySelector('#newPlan'), unseen, function(item) {
+      return {
+        label: item.word.word,
+        detail: item.column.title,
+        target: item
+      };
+    }, '所有单词都已开始学习，今天专注复习即可。');
+    var select = panel.querySelector('#heatmapSet');
+    WordTales.Data.sets.forEach(function(set) {
+      var option = document.createElement('option');
+      option.value = set.id;
+      option.textContent = set.label + ' · ' + WordTales.Data.countWords(set) + '词';
+      select.appendChild(option);
+    });
+    if (!heatmapSetId) heatmapSetId = activeSetId();
+    select.value = heatmapSetId;
+    select.addEventListener('change', function() {
+      heatmapSetId = select.value;
+      renderHeatmap();
+    });
+    renderHeatmap();
+  }
+  function openDashboard() {
+    if (queueUntilReady(openDashboard)) return;
+    if (!overlay) buildDashboard();
+    heatmapSetId = activeSetId();
+    renderDashboard();
+    overlay.classList.add('active');
+    setBackgroundInert(true);
+    document.body.style.overflow = 'hidden';
+    setTimeout(function() {
+      var close = panel.querySelector('.progress-close');
+      if (close) close.focus();
+    }, 0);
+  }
+  function closeDashboard() {
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    setBackgroundInert(false);
+    document.body.style.overflow = '';
+    var entry = document.getElementById('progressEntry');
+    if (entry) entry.focus();
+  }
+  function buildDashboard() {
+    overlay = document.createElement('div');
+    overlay.className = 'progress-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', '学习进度');
+    panel = document.createElement('div');
+    panel.className = 'progress-panel';
+    overlay.appendChild(panel);
+    overlay.addEventListener('mousedown', function(event) {
+      if (event.target === overlay) closeDashboard();
+    });
+    overlay.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') closeDashboard();
+    });
+    document.body.appendChild(overlay);
+  }
+  function setBackgroundInert(inert) {
+    ['progressEntry', 'dailyReminder', 'appContent', 'toc', 'setSwitcher'].forEach(function(id) {
+      var element = document.getElementById(id);
+      if (element) element.inert = inert;
+    });
+  }
+  function refreshOpenDashboard() {
+    if (overlay && overlay.classList.contains('active')) renderDashboard();
+  }
+  function reminderText() {
+    var due = dueWords().length;
+    var unseen = newWords(8).length;
+    if (due > 0) return '今天有 ' + due + ' 个单词需要复习，完成后建议新学 ' + unseen + ' 个单词。';
+    return unseen > 0 ? '今天没有到期内容，建议轻量学习 ' + unseen + ' 个新单词。' : '今天没有到期内容，保持一次轻松阅读就很好。';
+  }
+  function showDailyReminder(force) {
+    var store = load();
+    var today = dayKey();
+    if (!force && store.reminders.lastShown === today) return;
+    var banner = document.getElementById('dailyReminder');
+    if (!banner) return;
+    banner.innerHTML = '';
+    var copy = document.createElement('div');
+    copy.className = 'daily-reminder-copy';
+    var title = document.createElement('strong');
+    title.textContent = '今日复习提醒';
+    copy.appendChild(title);
+    copy.appendChild(document.createTextNode(reminderText()));
+    var open = document.createElement('button');
+    open.type = 'button';
+    open.textContent = '查看计划';
+    open.addEventListener('click', openDashboard);
+    var dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'reminder-dismiss';
+    dismiss.textContent = '稍后';
+    dismiss.setAttribute('aria-label', '关闭今日提醒');
+    dismiss.addEventListener('click', function() { banner.hidden = true; });
+    banner.appendChild(copy);
+    banner.appendChild(open);
+    banner.appendChild(dismiss);
+    banner.hidden = false;
+    store.reminders.lastShown = today;
+    save();
+    if (store.reminders.notifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try { new Notification('WordTales 今日复习', { body: reminderText() }); } catch (e) {}
+    }
+  }
+  function observeArticles() {
+    if (!('IntersectionObserver' in window)) return;
+    articleObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting || entry.intersectionRatio < .25) return;
+        var section = entry.target.closest('.column-section');
+        if (!section) return;
+        trackArticle(section.id);
+      });
+    }, { threshold: [.25] });
+    document.querySelectorAll('.essay-block').forEach(function(block) {
+      articleObserver.observe(block);
+    });
+  }
+  function init() {
+    buildIndexes();
+    load();
+    currentDay = dayKey();
+    var entry = document.getElementById('progressEntry');
+    if (entry) {
+      entry.disabled = true;
+      entry.setAttribute('aria-busy', 'true');
+    }
+    if (entry) entry.addEventListener('click', openDashboard);
+    return hydrate().then(function() {
+      migrateStarredWords();
+      isReady = true;
+      if (entry) {
+        entry.disabled = false;
+        entry.removeAttribute('aria-busy');
+      }
+      var queued = pendingOperations.slice();
+      pendingOperations = [];
+      queued.forEach(function(operation) { operation(); });
+      observeArticles();
+      showDailyReminder(false);
+      window.addEventListener('pagehide', function() {
+        if (profileSaveTimer) {
+          clearTimeout(profileSaveTimer);
+          profileSaveTimer = null;
+        }
+        writeProfileNow().catch(function() {});
+      });
+      window.setInterval(function() {
+        var nextDay = dayKey();
+        if (nextDay !== currentDay) {
+          currentDay = nextDay;
+          showDailyReminder(true);
+          refreshOpenDashboard();
+        }
+      }, 60000);
+    });
+  }
+  return {
+    init: init,
+    open: openDashboard,
+    close: closeDashboard,
+    trackWord: trackWord,
+    trackArticle: trackArticle,
+    trackAnalysis: trackAnalysis,
+    recallProbability: recallProbability,
+    memoryState: memoryState,
+    getData: function() { return load(); }
+  };
+})();
+</script>
+
+<script>
+/* ============================================================
  * Modules: Navigation / Reader / WordPopup / Progress / Game /
  *          CopyPractice / Analysis / Cards / App
  * 每个模块只暴露页面需要直接调用的函数，其余状态保留在闭包内。
@@ -14778,6 +15947,9 @@ break;
 }
 }
 if (!info) return;
+WordTales.LearningProgress.trackWord(wordEl.dataset.vocabId, 'click', {
+paragraphId: wordEl.closest('p') ? wordEl.closest('p').dataset.paragraphId : ''
+});
 document.querySelectorAll('.word-popup').forEach(function(p){
 var owner = p.dataset.ownerWordId ? document.getElementById(p.dataset.ownerWordId) : null;
 if (owner) owner.setAttribute('aria-expanded', 'false');
@@ -15014,6 +16186,7 @@ if (!vw) return;
 var gameCard = document.createElement('div');
 gameCard.className = 'game-card floating';
 gameCard.dataset.idx = idx;
+gameCard.dataset.vocabId = card.dataset.vocabId || '';
 gameCard.setAttribute('role', 'button');
 gameCard.setAttribute('tabindex', '0');
 
@@ -15253,6 +16426,11 @@ if (idx >= 0) floatCards.splice(idx, 1);
 
 var word = card.dataset.word || '';
 var isUnfamiliar = targetDz.classList.contains('unfamiliar');
+if (card.dataset.vocabId) {
+WordTales.LearningProgress.trackWord(card.dataset.vocabId, isUnfamiliar ? 'unknown' : 'known', {
+columnId: _gameSection ? _gameSection.id : ''
+});
+}
 if (isUnfamiliar) {
 toggleStarWord(word, true);
 var existingStar = card.querySelector('.game-star');
@@ -15819,6 +16997,9 @@ btn.textContent = '解析';
 btn.addEventListener('click', function(e){
 e.stopPropagation();
 var paraEl = block.querySelectorAll('.essay-face p')[idx];
+if (paraEl && paraEl.dataset.paragraphId) {
+WordTales.LearningProgress.trackAnalysis(paraEl.dataset.paragraphId);
+}
 block._scrollReturnPara = paraEl;
 block._scrollReturnButton = btn;
 showAnalysis(block, back, idx);
@@ -15959,6 +17140,11 @@ card.setAttribute('aria-label', vw.textContent.trim() + '，单词卡片，按�
 function toggleCard() {
 card.classList.toggle('flipped');
 card.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
+if (card.dataset.vocabId) {
+WordTales.LearningProgress.trackWord(card.dataset.vocabId, 'card', {
+columnId: card.closest('.column-section') ? card.closest('.column-section').id : ''
+});
+}
 }
 card.addEventListener('click', function(e){
 toggleCard();
@@ -16082,6 +17268,7 @@ document.getElementById(targetId).scrollIntoView({ block: 'start' });
 switchToHash();
 window.addEventListener('hashchange', switchToHash);
 WordTales.Progress.refresh();
+WordTales.LearningProgress.init();
 }
 
 function resolveSection(sectionOrId) {
