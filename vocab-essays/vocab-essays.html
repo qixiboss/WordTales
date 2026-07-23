@@ -1226,7 +1226,7 @@ color:var(--muted);
 font-size:.74rem}
 .progress-plan-grid {
 display:grid;
-grid-template-columns:repeat(3,minmax(0,1fr));
+grid-template-columns:1fr;
 gap:.75rem}
 .progress-plan-card {
 border:1px solid var(--rule);
@@ -1242,6 +1242,8 @@ margin-bottom:.6rem}
 list-style:none;
 display:grid;
 gap:.38rem}
+.column-plan-list {
+grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
 .progress-plan-item {
 display:flex;
 align-items:center;
@@ -1392,6 +1394,8 @@ padding:.8rem}
 .progress-kpi-value {
 font-size:1.55rem}
 .progress-plan-grid {
+grid-template-columns:1fr}
+.column-plan-list {
 grid-template-columns:1fr}
 .progress-plan-card {
 min-height:auto;
@@ -14547,12 +14551,14 @@ WordTales.LearningProgress = (function() {
   var database = null;
   var persistenceMode = 'localStorage';
   var profileSaveTimer = null;
+  var eventWritesSincePrune = 0;
   var isReady = false;
   var pendingOperations = [];
   var wordIndex = Object.create(null);
   var wordByText = Object.create(null);
   var columnIndex = Object.create(null);
   var paragraphIndex = Object.create(null);
+  var allWordItems = [];
   var overlay = null;
   var panel = null;
   var heatmapSetId = '';
@@ -14685,8 +14691,46 @@ WordTales.LearningProgress = (function() {
     if (!database || persistenceMode !== 'indexedDB') return;
     try {
       var transaction = database.transaction('events', 'readwrite');
-      transaction.objectStore('events').add(event);
+      var request = transaction.objectStore('events').add(event);
+      request.onsuccess = function() {
+        eventWritesSincePrune++;
+        if (eventWritesSincePrune >= 100) {
+          eventWritesSincePrune = 0;
+          pruneEventDatabase();
+        }
+      };
     } catch (e) {}
+  }
+  function pruneEventDatabase() {
+    if (!database || persistenceMode !== 'indexedDB') return Promise.resolve();
+    return new Promise(function(resolve) {
+      var transaction;
+      try {
+        transaction = database.transaction('events', 'readwrite');
+      } catch (e) {
+        resolve();
+        return;
+      }
+      transaction.oncomplete = resolve;
+      transaction.onerror = resolve;
+      transaction.onabort = resolve;
+      var store = transaction.objectStore('events');
+      var countRequest = store.count();
+      countRequest.onerror = function() {};
+      countRequest.onsuccess = function() {
+        var remaining = Math.max(0, countRequest.result - MAX_EVENTS);
+        if (!remaining) return;
+        var cursorRequest = store.openCursor();
+        cursorRequest.onerror = function() {};
+        cursorRequest.onsuccess = function() {
+          var cursor = cursorRequest.result;
+          if (!cursor || remaining <= 0) return;
+          cursor.delete();
+          remaining--;
+          cursor.continue();
+        };
+      };
+    });
   }
   function migrateFallbackToDatabase(db, fallback) {
     return new Promise(function(resolve, reject) {
@@ -14735,6 +14779,7 @@ WordTales.LearningProgress = (function() {
             localStorage.setItem(MIGRATION_KEY, '1');
             if (typeof localStorage.removeItem === 'function') localStorage.removeItem(STORAGE_KEY);
           } catch (e) {}
+          return pruneEventDatabase();
         });
     }).catch(function() {
       persistenceMode = 'localStorage';
@@ -14772,6 +14817,11 @@ WordTales.LearningProgress = (function() {
     addEventToDatabase(event);
   }
   function buildIndexes() {
+    wordIndex = Object.create(null);
+    wordByText = Object.create(null);
+    columnIndex = Object.create(null);
+    paragraphIndex = Object.create(null);
+    allWordItems = [];
     WordTales.Data.sets.forEach(function(set) {
       set.columns.forEach(function(column) {
         columnIndex[column.id] = {
@@ -14784,6 +14834,7 @@ WordTales.LearningProgress = (function() {
             column: column,
             set: set
           };
+          allWordItems.push(wordIndex[word.id]);
           var key = word.word.toLowerCase();
           if (!wordByText[key]) wordByText[key] = word.id;
         });
@@ -14972,15 +15023,7 @@ WordTales.LearningProgress = (function() {
     return 'green';
   }
   function allWords() {
-    var result = [];
-    WordTales.Data.sets.forEach(function(set) {
-      set.columns.forEach(function(column) {
-        column.words.forEach(function(word) {
-          result.push({ word: word, column: column, set: set });
-        });
-      });
-    });
-    return result;
+    return allWordItems;
   }
   function dueWords() {
     var deadline = endOfToday();
@@ -14994,12 +15037,7 @@ WordTales.LearningProgress = (function() {
       return new Date(ar.nextReview).getTime() - new Date(br.nextReview).getTime();
     });
   }
-  function newWords(limit) {
-    return allWords().filter(function(item) {
-      return !load().words[item.word.id];
-    }).slice(0, limit || 8);
-  }
-  function revisitColumns(due) {
+  function groupDueColumns(due) {
     var counts = {};
     due.forEach(function(item) {
       counts[item.column.id] = (counts[item.column.id] || 0) + 1;
@@ -15007,8 +15045,7 @@ WordTales.LearningProgress = (function() {
     return Object.keys(counts).map(function(id) {
       return {
         info: columnIndex[id],
-        count: counts[id],
-        article: load().articles[id] || null
+        count: counts[id]
       };
     }).sort(function(a, b) {
       return b.count - a.count;
@@ -15114,8 +15151,7 @@ WordTales.LearningProgress = (function() {
     if (!panel) return;
     var store = load();
     var due = dueWords();
-    var unseen = newWords(8);
-    var revisit = revisitColumns(due).slice(0, 6);
+    var dueColumns = groupDueColumns(due);
     var learnedIds = Object.keys(store.words).filter(function(id) { return !!wordIndex[id]; });
     var articleCount = Object.keys(store.articles).filter(function(id) { return !!columnIndex[id]; }).length;
     var analysisCount = Object.keys(store.analyses).filter(function(id) { return !!paragraphIndex[id]; }).length;
@@ -15139,11 +15175,9 @@ WordTales.LearningProgress = (function() {
         '<div class="progress-kpi"><div class="progress-kpi-value">' + articleCount + '<small> / ' + analysisCount + '</small></div><div class="progress-kpi-label">浏览文章 / 段落解析</div></div>' +
       '</div>' +
       '<section class="progress-section">' +
-        '<div class="progress-section-head"><div><h3>今天学什么</h3><p class="progress-section-note">先复习到期内容，再开始少量新内容</p></div></div>' +
+        '<div class="progress-section-head"><div><h3>今天学什么</h3><p class="progress-section-note">按词集和栏目汇总今天到期的复习内容</p></div></div>' +
         '<div class="progress-plan-grid">' +
-          '<article class="progress-plan-card"><h4>到期单词 · ' + due.length + '</h4><ul class="progress-plan-list" id="duePlan"></ul></article>' +
-          '<article class="progress-plan-card"><h4>重读语境 · ' + revisit.length + '</h4><ul class="progress-plan-list" id="articlePlan"></ul></article>' +
-          '<article class="progress-plan-card"><h4>建议新学 · ' + unseen.length + '</h4><ul class="progress-plan-list" id="newPlan"></ul></article>' +
+          '<article class="progress-plan-card"><h4>今日复习栏目 · ' + dueColumns.length + '</h4><ul class="progress-plan-list column-plan-list" id="duePlan"></ul></article>' +
         '</div>' +
       '</section>' +
       '<section class="progress-section">' +
@@ -15153,27 +15187,13 @@ WordTales.LearningProgress = (function() {
         '<p class="progress-footnote">进度仅保存在当前浏览器。' + (persistenceMode === 'indexedDB' ? '学习档案与逐次记录通过 IndexedDB 异步保存。' : '当前浏览器不支持 IndexedDB，已降级使用 localStorage。') + '每日提醒会在当天首次打开 WordTales 时出现；浏览器保持打开时，跨天也会自动刷新。分类为“比较认识”会延长复习间隔，分类为“不太认识”会缩短间隔。</p>' +
       '</section>';
     panel.querySelector('.progress-close').addEventListener('click', closeDashboard);
-    fillPlanList(panel.querySelector('#duePlan'), due.slice(0, 8), function(item) {
+    fillPlanList(panel.querySelector('#duePlan'), dueColumns, function(item) {
       return {
-        label: item.word.word,
-        detail: formatPercent(recallProbability(item.word.id)),
-        target: item
-      };
-    }, '今天没有到期单词，可以继续巩固或学习新内容。');
-    fillPlanList(panel.querySelector('#articlePlan'), revisit, function(item) {
-      return {
-        label: item.info.column.theme.zh,
+        label: item.info.set.label + ' · ' + item.info.column.title,
         detail: item.count + ' 个到期词',
         target: { set: item.info.set, column: item.info.column }
       };
-    }, '完成更多单词学习后，这里会推荐需要重读的短文。');
-    fillPlanList(panel.querySelector('#newPlan'), unseen, function(item) {
-      return {
-        label: item.word.word,
-        detail: item.column.title,
-        target: item
-      };
-    }, '所有单词都已开始学习，今天专注复习即可。');
+    }, '今天没有到期栏目，可以自由复习任意一列。');
     var select = panel.querySelector('#heatmapSet');
     WordTales.Data.sets.forEach(function(set) {
       var option = document.createElement('option');
@@ -15238,9 +15258,8 @@ WordTales.LearningProgress = (function() {
   }
   function reminderText() {
     var due = dueWords().length;
-    var unseen = newWords(8).length;
-    if (due > 0) return '今天有 ' + due + ' 个单词需要复习，完成后建议新学 ' + unseen + ' 个单词。';
-    return unseen > 0 ? '今天没有到期内容，建议轻量学习 ' + unseen + ' 个新单词。' : '今天没有到期内容，保持一次轻松阅读就很好。';
+    if (due > 0) return '今天有 ' + due + ' 个单词需要复习，打开计划查看对应的词集和栏目。';
+    return '今天没有到期内容，可以自由复习任意一列。';
   }
   function showDailyReminder(force) {
     var store = load();
@@ -15420,18 +15439,32 @@ _modalClose = null;
 if (previous && typeof previous.focus === 'function') previous.focus();
 }
 
+function initSetFeatures(root) {
+if (!root) return;
+initFlipCards(root);
+initFlipToggles(root);
+initParaFlip(root);
+initReadAloud(root);
+initWordJump(root);
+}
+
 function switchSet(setId, btn) {
 closeWordPopups();
 _clearReadTimer();
 if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
 if (currentBlock) unwrapWords(currentBlock);
 resetReadButtons();
+var setData = WordTales.Data.getSet(setId) || WordTales.Data.sets[0];
+if (!setData) return;
+setId = setData.id;
 document.querySelectorAll('.set-content').forEach(function(el){ el.classList.remove('active'); });
 document.querySelectorAll('.set-content').forEach(function(el){
 el.setAttribute('aria-hidden', 'true');
 el.inert = true;
 });
 var activeSet = document.getElementById(setId);
+if (!activeSet) return;
+initSetFeatures(activeSet);
 activeSet.classList.add('active');
 activeSet.setAttribute('aria-hidden', 'false');
 activeSet.inert = false;
@@ -15444,7 +15477,6 @@ btn.classList.add('active');
 btn.setAttribute('aria-pressed', 'true');
 }
 var nav = document.getElementById('toc');
-var setData = WordTales.Data.getSet(setId) || WordTales.Data.sets[0];
 nav.innerHTML = '';
 setData.columns.forEach(function(column){
 var a = document.createElement('a');
@@ -15874,8 +15906,9 @@ statusLabel.textContent = '朗读中 · ' + (bestVoice ? bestVoice.name : '默�
 _readTimer = setTimeout(speakNext, 200);
 }
 
-function initReadAloud() {
-document.querySelectorAll('.essay-block').forEach(function(block){
+function initReadAloud(root) {
+(root || document).querySelectorAll('.essay-block').forEach(function(block){
+if (block.querySelector('.essay-head')) return;
 var h3 = block.querySelector('h3');
 if (!h3) return;
 var head = document.createElement('div');
@@ -15905,8 +15938,8 @@ if (bestVoice) utterance.voice = bestVoice;
 speechSynthesis.speak(utterance);
 }
 
-function initWordJump() {
-document.querySelectorAll('.essay-block').forEach(function(block){
+function initWordJump(root) {
+(root || document).querySelectorAll('.essay-block').forEach(function(block){
 var section = block.closest('.column-section');
 if (!section) return;
 var grid = section.querySelector('.vocab-grid');
@@ -15929,6 +15962,8 @@ meaning: vm ? vm.textContent.trim() : ''
 }
 });
 block.querySelectorAll('strong.word').forEach(function(wordEl){
+if (wordEl.dataset.popupInitialized === 'true') return;
+wordEl.dataset.popupInitialized = 'true';
 if (!wordEl.id) wordEl.id = 'word-popup-owner-' + (++_wordPopupOwnerId);
 wordEl.setAttribute('role', 'button');
 wordEl.setAttribute('tabindex', '0');
@@ -16969,8 +17004,9 @@ copyDrawing = false;
 }
 
 
-function initParaFlip() {
-document.querySelectorAll('.essay-block').forEach(function(block){
+function initParaFlip(root) {
+(root || document).querySelectorAll('.essay-block').forEach(function(block){
+if (block.querySelector('.essay-inner')) return;
 var inner = document.createElement('div');
 inner.className = 'essay-inner';
 var front = document.createElement('div');
@@ -17108,8 +17144,8 @@ backEl.appendChild(loading);
 }
 }
 
-function initFlipCards() {
-document.querySelectorAll('.vocab-card').forEach(function(card){
+function initFlipCards(root) {
+(root || document).querySelectorAll('.vocab-card').forEach(function(card){
 if (card.querySelector('.card-inner')) return;
 var vw = card.querySelector('.vw');
 var vp = card.querySelector('.vp');
@@ -17158,8 +17194,8 @@ toggleCard();
 });
 }
 
-function initFlipToggles() {
-document.querySelectorAll('.column-section').forEach(function(section){
+function initFlipToggles(root) {
+(root || document).querySelectorAll('.column-section').forEach(function(section){
 var head = section.querySelector('.section-head');
 if (!head) return;
 if (head.querySelector('.flip-toggle')) return;
@@ -17231,11 +17267,6 @@ head.appendChild(copyBtn);
 
 function init() {
 WordTales.Renderer.render();
-WordTales.Cards.init();
-WordTales.Cards.initToolbar();
-WordTales.Analysis.init();
-WordTales.Reader.init();
-WordTales.WordPopup.init();
 document.querySelectorAll('.set-btn').forEach(function(btn){
 btn.addEventListener('click', function(){ WordTales.Navigation.switchSet(btn.dataset.set, btn); });
 });
