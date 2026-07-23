@@ -789,9 +789,7 @@ transition:background .2s,color .2s}
 background:var(--accent-soft);
 color:var(--accent2)}
 .word-popup {
-position:absolute;
-top:100%;
-left:0;
+position:fixed;
 z-index:100;
 background:var(--bg2);
 border:1px solid var(--accent);
@@ -803,8 +801,11 @@ font-weight:400;
 font-size:.82rem;
 color:var(--ink);
 line-height:1.5;
-min-width:140px;
-max-width:280px;
+box-sizing:border-box;
+min-width:min(140px,calc(100vw - 16px));
+max-width:min(280px,calc(100vw - 16px));
+max-height:calc(100vh - 16px);
+overflow-y:auto;
 animation:popIn .2s ease-out}
 @keyframes popIn {
 from{opacity:0;transform:translateY(-6px) scale(.95)}
@@ -14289,6 +14290,7 @@ var currentBtn = null;
 var currentBlock = null;
 var readCancelled = false;
 var _currentClosePopup = null;
+var _wordPopupOwnerId = 0;
 var _readTimer = null;
 
 function _clearReadTimer() {
@@ -14301,12 +14303,9 @@ document.removeEventListener('click', _currentClosePopup);
 _currentClosePopup = null;
 }
 document.querySelectorAll('.word-popup').forEach(function(popup){
-var parent = popup.parentElement;
-if (parent) {
-parent.style.display = '';
-parent.style.position = '';
-parent.setAttribute('aria-expanded', 'false');
-}
+var wordId = popup.dataset.ownerWordId;
+var owner = wordId ? document.getElementById(wordId) : null;
+if (owner) owner.setAttribute('aria-expanded', 'false');
 popup.remove();
 });
 }
@@ -14761,6 +14760,7 @@ meaning: vm ? vm.textContent.trim() : ''
 }
 });
 block.querySelectorAll('strong.word').forEach(function(wordEl){
+if (!wordEl.id) wordEl.id = 'word-popup-owner-' + (++_wordPopupOwnerId);
 wordEl.setAttribute('role', 'button');
 wordEl.setAttribute('tabindex', '0');
 wordEl.setAttribute('aria-expanded', 'false');
@@ -14779,18 +14779,15 @@ break;
 }
 if (!info) return;
 document.querySelectorAll('.word-popup').forEach(function(p){
-var parent = p.parentElement;
-if (parent) {
-parent.style.display = '';
-parent.style.position = '';
-parent.setAttribute('aria-expanded', 'false');
-}
+var owner = p.dataset.ownerWordId ? document.getElementById(p.dataset.ownerWordId) : null;
+if (owner) owner.setAttribute('aria-expanded', 'false');
 p.remove();
 });
 var popup = document.createElement('div');
 popup.className = 'word-popup';
 popup.setAttribute('role', 'status');
 popup.setAttribute('aria-live', 'polite');
+popup.dataset.ownerWordId = wordEl.id;
 var pw = document.createElement('div');
 pw.className = 'pw';
 pw.textContent = info.word;
@@ -14811,10 +14808,26 @@ line.appendChild(pm);
 }
 popup.appendChild(line);
 }
-wordEl.style.position = 'relative';
-wordEl.style.display = 'inline-block';
 popup.addEventListener('click', function(ev){ ev.stopPropagation(); });
-wordEl.appendChild(popup);
+popup.style.visibility = 'hidden';
+popup.style.animation = 'none';
+document.body.appendChild(popup);
+var wordRect = wordEl.getBoundingClientRect();
+var popupRect = popup.getBoundingClientRect();
+var viewportGap = 8;
+var popupGap = 6;
+var left = wordRect.left + (wordRect.width - popupRect.width) / 2;
+left = Math.max(viewportGap, Math.min(left, window.innerWidth - popupRect.width - viewportGap));
+var roomBelow = window.innerHeight - wordRect.bottom - popupGap - viewportGap;
+var roomAbove = wordRect.top - popupGap - viewportGap;
+var placeAbove = popupRect.height > roomBelow && roomAbove > roomBelow;
+var top = placeAbove
+? Math.max(viewportGap, wordRect.top - popupRect.height - popupGap)
+: Math.min(wordRect.bottom + popupGap, window.innerHeight - popupRect.height - viewportGap);
+popup.style.left = Math.round(left) + 'px';
+popup.style.top = Math.round(Math.max(viewportGap, top)) + 'px';
+popup.style.visibility = '';
+popup.style.animation = '';
 wordEl.setAttribute('aria-expanded', 'true');
 speakWord(info.word);
 if (_currentClosePopup) {
@@ -14825,8 +14838,6 @@ var closePopup = function(ev){
 if (!popup.contains(ev.target) && ev.target !== wordEl) {
 popup.remove();
 wordEl.setAttribute('aria-expanded', 'false');
-wordEl.style.display = '';
-wordEl.style.position = '';
 document.removeEventListener('click', closePopup);
 _currentClosePopup = null;
 }
