@@ -59,7 +59,7 @@ if (markerIndex !== -1) {
 }
 
 const ids = new Map();
-const totals = { sets: sets.length, columns: 0, words: 0, paragraphs: 0 };
+const totals = { sets: sets.length, columns: 0, words: 0, paragraphs: 0, audioColumns: 0 };
 
 function registerId(id, type) {
   if (typeof id !== 'string' || !id.trim()) {
@@ -86,6 +86,49 @@ sets.forEach((set, setIndex) => {
 
     if (!Array.isArray(column.words)) errors.push(`Column "${column.id}" has no words array.`);
     if (!Array.isArray(column.paragraphs)) errors.push(`Column "${column.id}" has no paragraphs array.`);
+
+    if (column.audio !== undefined) {
+      totals.audioColumns += 1;
+      if (!column.audio || typeof column.audio.src !== 'string' || !column.audio.src.trim()) {
+        errors.push(`Column "${column.id}" has an invalid audio source.`);
+      } else {
+        const audioPath = path.resolve(path.dirname(htmlPath), column.audio.src);
+        if (!fs.existsSync(audioPath) || !fs.statSync(audioPath).isFile()) {
+          errors.push(`Column "${column.id}" audio file is missing: ${column.audio.src}`);
+        }
+      }
+
+      const articleTokens = paragraphs.flatMap((paragraph) => {
+        if (!Array.isArray(paragraph.segments)) return [];
+        return paragraph.segments.flatMap((segment) => {
+          const text = typeof segment === 'string' ? segment : segment.text;
+          return String(text || '').split(/\s+/).filter(Boolean);
+        });
+      });
+      const cues = column.audio && column.audio.cues;
+      if (!Array.isArray(cues)) {
+        errors.push(`Column "${column.id}" has no audio cue array.`);
+      } else if (cues.length !== articleTokens.length) {
+        errors.push(
+          `Column "${column.id}" has ${cues.length} audio cues for ${articleTokens.length} article tokens.`
+        );
+      } else {
+        let previousEnd = -Infinity;
+        cues.forEach((cue, cueIndex) => {
+          if (cue === null) return;
+          const validCue = Array.isArray(cue) && cue.length === 2 &&
+            cue.every(Number.isFinite) && cue[0] >= 0 && cue[1] > cue[0];
+          if (!validCue) {
+            errors.push(`Column "${column.id}" has an invalid audio cue at token ${cueIndex + 1}.`);
+            return;
+          }
+          if (cue[0] < previousEnd) {
+            errors.push(`Column "${column.id}" has overlapping audio cues at token ${cueIndex + 1}.`);
+          }
+          previousEnd = cue[1];
+        });
+      }
+    }
 
     words.forEach((word, wordIndex) => {
       totals.words += 1;
@@ -126,6 +169,7 @@ if (errors.length) {
   console.log(
     `Integrity check passed: ${scripts.length} scripts, ` +
     `${totals.sets} sets, ${totals.columns} columns, ` +
-    `${totals.words} words, ${totals.paragraphs} paragraphs.`
+    `${totals.words} words, ${totals.paragraphs} paragraphs, ` +
+    `${totals.audioColumns} recorded columns.`
   );
 }

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-WordTales is a single-page, zero-dependency English vocabulary learning app. The entire application lives in one HTML file (`vocab-essays/vocab-essays.html`, ~15,500 lines) with embedded CSS and vanilla JavaScript. No build step, no package manager, no framework.
+WordTales is a single-page, zero-dependency English vocabulary learning app. The application logic lives in one HTML file (`vocab-essays/vocab-essays.html`) with embedded CSS and vanilla JavaScript; prerecorded readings live in `vocab-essays/audio/`. No build step, no package manager, no framework.
 
 ## Commands
 
@@ -41,7 +41,7 @@ That single call chains: render → initialize interactive modules → activate 
 ### Feature sub-modules (all under `WordTales.*`)
 
 - **`Navigation`** — `switchSet()`: toggles visible vocab set, rebuilds sticky TOC, updates stats, cancels any in-progress TTS reading.
-- **`Reader`** — Text-to-speech: voice selection (`pickBestVoice`), sentence splitting, word-by-word highlight synced to utterance boundaries, speed/pitch modulation by sentence type.
+- **`Reader`** — Uses prerecorded MP3 plus static word cues when a column has `audio` metadata; otherwise uses speech synthesis with utterance-boundary highlighting. It also handles playback cleanup and recorded-audio fallback.
 - **`WordPopup`** — Click a highlighted word in an essay → lookup via `data-vocab-id` → show POS/meaning popover + play pronunciation via SpeechSynthesis.
 - **`Progress`** — Reads/writes `localStorage.starredWords`; syncs star state across main page and game.
 - **`LearningProgress`** — Tracks word/card/game/article/analysis activity, schedules spaced reviews, and renders daily recommendations plus the four-state memory heatmap.
@@ -74,7 +74,7 @@ GitHub Actions (`.github/workflows/jekyll-gh-pages.yml`) deploys on push to `mai
 
 ## Tech constraints
 
-- **Web Speech API** — TTS availability and voice quality are browser/OS-dependent. The app degrades gracefully when `SpeechSynthesis` is absent.
+- **HTML Audio + Web Speech API** — All current columns use bundled MP3 files and static cues. Future unrecorded columns and individual word pronunciation remain browser/OS-dependent; recorded audio falls back to speech synthesis if loading fails.
 - **Canvas 2D** — used only for mobile handwriting in CopyPractice.
 - **IndexedDB** — `wordtales-learning` stores the learning profile and append-only event records asynchronously.
 - **localStorage** — `starredWords` remains for star compatibility; `wordtales.learning.v1` is now only a migration source and IndexedDB fallback.

@@ -2,14 +2,14 @@
 
 一个将英语词汇放回语境中学习的单页应用。项目收录 **7 份词集、28 个主题专栏、897 个词汇和 132 个短文段落**，并把词卡、主题阅读、语音朗读、逐段解析和复习练习整合在同一个页面中。
 
-整个应用只有一个 HTML 文件，无构建步骤、无第三方依赖，可离线打开，也可直接部署为静态站点。
+应用主体仍是一个 HTML 文件，并附带少量 MP3 朗读资源；无构建步骤、无第三方运行时依赖，可离线打开，也可直接部署为静态站点。
 
 ## 功能
 
 - **语境阅读**：每列词汇对应一篇主题短文，目标词在文章中高亮显示。
 - **词卡学习**：单张词卡可翻转；每列可批量切换“英文 / 自定义 / 释义”状态。
 - **单词点读**：点击短文中的高亮词可查看词性和中文释义，并调用系统英文语音发音。
-- **短文朗读**：使用 Web Speech API 分句朗读，根据问句、感叹句和句子长度调整语速与音调，同时显示逐词高亮和阅读进度。
+- **短文朗读**：全部 28 个栏目播放预生成 MP3，并按静态时间轴逐词高亮；未来新增但尚未配置录音的栏目仍可使用 Web Speech API。
 - **逐段解析**：每个段落可翻转查看中文翻译、语法结构和重点表达。
 - **分类游戏**：将漂浮词卡拖入“比较认识”或“不太认识”，后者会被加星并加入复习清单。
 - **抄写练习**：桌面端使用键盘拼写，手机和平板使用横屏手写画板；练习范围仅包含当前列已加星的词。
@@ -39,7 +39,7 @@ python3 -m http.server 8000
 http://localhost:8000/vocab-essays/vocab-essays.html
 ```
 
-建议使用较新的 Chrome、Edge 或 Safari。语音的音色和可用性取决于浏览器及操作系统安装的英文语音；浏览器不支持 `SpeechSynthesis` 时，其余学习功能仍可使用。
+建议使用较新的 Chrome、Edge 或 Safari。全部栏目直接播放随站点提供的录音；浏览器不支持 `SpeechSynthesis` 时，全文录音及其余学习功能仍可使用，仅单词点读和录音失败时的系统语音降级不可用。
 
 ## 使用路径
 
@@ -68,14 +68,15 @@ http://localhost:8000/vocab-essays/vocab-essays.html
 .
 ├── .github/workflows/jekyll-gh-pages.yml  # GitHub Pages 发布流程
 ├── vocab-essays/
-│   └── vocab-essays.html                  # 样式、数据、渲染器与全部交互
+│   ├── audio/                             # 预生成全文朗读 MP3
+│   └── vocab-essays.html                  # 样式、数据、时间轴、渲染器与全部交互
 ├── LICENSE
 └── README.md
 ```
 
 ## 代码架构
 
-`vocab-essays.html` 是一个自包含的单文件应用，但 JavaScript 按职责挂载在全局命名空间 `WordTales` 下：
+`vocab-essays.html` 包含全部页面逻辑和逐词时间轴，JavaScript 按职责挂载在全局命名空间 `WordTales` 下：
 
 ```text
 结构化词集数据
@@ -101,7 +102,7 @@ WordTales.Data ──索引与查询──► WordTales.Renderer
 | `WordTales.Data` | 保存词集数据，建立词集、专栏、词汇和段落索引；提供新增与查询 API。 |
 | `WordTales.Renderer` | 将数据转义并渲染为词集切换器、专栏、词卡和短文 DOM。 |
 | `Navigation` | 切换词集、更新专栏目录和统计信息，并清理正在运行的朗读状态。 |
-| `Reader` | 选择英文语音、拆分句子与分句、控制韵律、同步逐词高亮和进度。 |
+| `Reader` | 播放栏目 MP3 或选择系统英文语音，通过静态 cue 或边界事件同步逐词高亮和进度。 |
 | `WordPopup` | 通过 `data-vocab-id` 查询词汇，显示释义弹层并播放单词发音。 |
 | `Progress` | 读写 `localStorage.starredWords`，同步主页面和游戏中的加星状态。 |
 | `LearningProgress` | 记录学习事件，计算回忆概率与复习间隔，生成每日建议、提醒和记忆热力图。 |
@@ -174,6 +175,10 @@ DOMContentLoaded
   columns: [{
     id: "s8col1",
     number: 1,
+    audio: {
+      src: "audio/list8_col1.mp3",
+      cues: [[0.32, 0.58], [0.58, 0.91], [0.91, 1.12], [1.12, 1.50], null]
+    },
     title: "第一列",
     theme: { zh: "主题中文名", en: "English Theme" },
     words: [{
@@ -204,12 +209,15 @@ DOMContentLoaded
 2. 段落对象片段的 `vocabId` 必须指向当前专栏中真实存在的词汇 ID。
 3. `analysis` 与段落放在同一对象中；`points` 可使用 `<span class="keyword">...</span>` 标注重点，其余内容会在展示前转义。
 
+`audio` 为可选配置。页面会分别按空白拆分每个 `segments` 项，因此 `cues` 必须与这些运行时 token 一一对应；每个非空项是该 token 在 MP3 中的 `[开始秒数, 结束秒数]`。录音未读出的词和独立标点使用 `null`。
+
 除了直接编辑 `sets`，也可以在应用初始化前调用：
 
 ```js
 WordTales.Data.addWords(columnId, words);
 WordTales.Data.addParagraphs(columnId, paragraphs);
 WordTales.Data.addSet(set);
+WordTales.Data.getColumn(columnId);
 ```
 
 渲染器会自动生成词数、切换按钮和专栏导航。若增加全新的交互模块，应继续挂载到 `WordTales`，并在 `WordTales.App.init` 中初始化，以避免向全局作用域散落额外状态。
@@ -217,7 +225,8 @@ WordTales.Data.addSet(set);
 ## 技术说明
 
 - 原生 HTML、CSS 和 JavaScript，无运行时依赖。
-- Web Speech API：短文朗读与单词发音。
+- HTML Audio：播放预生成的栏目 MP3，使用静态逐词时间轴同步阅读进度。
+- Web Speech API：未来无录音栏目的全文朗读、录音加载失败时的降级，以及单词点读。
 - Canvas 2D：移动端手写练习。
 - Web Storage API：保存加星词汇。
 - `requestAnimationFrame`：驱动分类游戏中的词卡运动。
@@ -229,7 +238,7 @@ WordTales.Data.addSet(set);
 node scripts/check-integrity.js
 ```
 
-该脚本会检查内联 JavaScript 语法、数据 JSON、重复 ID、必填词汇字段和段落词汇引用。通过后仍应手动检查：词集切换、词卡翻面、段落解析、语音启停、游戏拖放、刷新后的加星恢复，以及桌面端和移动端抄写模式。
+该脚本会检查内联 JavaScript 语法、数据 JSON、重复 ID、必填词汇字段、段落词汇引用、录音文件及逐词 cue 的数量和顺序。通过后仍应手动检查：词集切换、词卡翻面、段落解析、录音与系统语音启停、游戏拖放、刷新后的加星恢复，以及桌面端和移动端抄写模式。
 
 ## 部署
 
@@ -239,7 +248,7 @@ node scripts/check-integrity.js
 
 1. 检出仓库并配置 GitHub Pages。
 2. 将 `vocab-essays/vocab-essays.html` 复制为 `_site/index.html`。
-3. 将 `README.md` 一并放入发布产物。
+3. 将 `vocab-essays/audio` 和 `README.md` 一并放入发布产物。
 4. 上传静态站点并部署到 GitHub Pages。
 
 首次部署时，在仓库 **Settings → Pages → Build and deployment** 中将 **Source** 设为 **GitHub Actions**。此项目不经过 Jekyll 构建。
