@@ -1017,6 +1017,84 @@ line-height:1.7}
 footer .tip-icon {
 color:var(--accent2);
 font-weight:700}
+/* Changelog */
+.changelog {
+max-width:720px;
+margin:0 auto;
+padding:2.5rem 1.5rem}
+.changelog-head {
+text-align:center;
+margin-bottom:2rem}
+.changelog-head h2 {
+font-family:var(--serif);
+font-size:1.8rem;
+font-weight:700;
+color:var(--ink);
+margin-bottom:.3rem}
+.changelog-head p {
+font-size:.85rem;
+color:var(--muted)}
+.changelog-version {
+margin-bottom:2rem;
+padding-bottom:1.5rem;
+border-bottom:1px solid var(--rule)}
+.changelog-version:last-child {
+border-bottom:none;
+margin-bottom:0;
+padding-bottom:0}
+.changelog-version h3 {
+font-family:var(--serif);
+font-size:1.15rem;
+font-weight:700;
+color:var(--accent);
+margin-bottom:.25rem}
+.changelog-version .cv-date {
+font-size:.78rem;
+color:var(--muted);
+margin-bottom:.6rem}
+.changelog-version .cv-desc {
+font-size:.88rem;
+color:var(--ink);
+margin-bottom:.5rem;
+line-height:1.7}
+.changelog-version ul {
+list-style:none;
+padding:0;
+margin:0}
+.changelog-version li {
+font-size:.84rem;
+color:var(--muted);
+line-height:1.75;
+padding-left:1.1rem;
+position:relative}
+.changelog-version li::before {
+content:"–";
+position:absolute;
+left:0;
+color:var(--rule)}
+.cv-badge {
+display:inline-block;
+font-size:.7rem;
+font-weight:700;
+padding:.15em .55em;
+border-radius:3px;
+margin-left:.4rem;
+vertical-align:middle;
+letter-spacing:.04em}
+.cv-badge.major {
+background:var(--accent);
+color:#fff}
+.cv-badge.minor {
+background:var(--accent-soft);
+color:var(--accent)}
+@media(max-width:600px) {
+.changelog {
+padding:2rem 1.2rem}
+.changelog-head h2 {
+font-size:1.5rem}
+.changelog-version h3 {
+font-size:1.05rem}
+}
 @media(max-width:600px) {
 .cover h1 {
 font-size:2rem}
@@ -1571,6 +1649,96 @@ display:none}
 <nav class="toc" id="toc" aria-label="栏目目录"></nav>
 <aside class="daily-reminder" id="dailyReminder" hidden aria-live="polite"></aside>
 <main id="appContent"></main>
+<section class="changelog" id="changelog" aria-label="更新日志">
+  <div class="changelog-head">
+    <h2>第八份：更新日志</h2>
+    <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v2.1 <span class="cv-badge major">大版本</span></h3>
+    <div class="cv-date">2026-07-24</div>
+    <div class="cv-desc"><strong>真人录音与播放控制。</strong>全部 7 份词集、28 个栏目的短文朗读从机器合成语音升级为 MP3 真人录音，每段录音配有逐词级时间轴，朗读时单词随声音同步高亮。</div>
+    <ul>
+      <li>28 个栏目全部接入 MP3 真人朗读音频，含逐词 cue 时间线</li>
+      <li>新增播放速度调节（0.5× ~ 2×），适配不同听力阶段</li>
+      <li>新增悬浮式朗读控制栏，阅读过程中随时暂停/继续/调速</li>
+    </ul>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v2.0 <span class="cv-badge major">大版本</span></h3>
+    <div class="cv-date">2026-07-23</div>
+    <div class="cv-desc"><strong>智能学习系统。</strong>从「一次性阅读工具」进化为「持续学习伴侣」——这是 WordTales 迄今最重要的架构升级。</div>
+    <ul>
+      <li>基于 IndexedDB 的学习档案系统，自动记录每次看词卡、读文章、玩游戏、做抄写、看解析的行为</li>
+      <li>实现间隔重复（Spaced Repetition）调度算法：标记「比较认识」延长复习间隔，「不太认识」缩短间隔</li>
+      <li>记忆热力图：以四色渐变直观展示每个单词的记忆新鲜度，颜色由复习时间、遗忘次数和自然衰减共同决定</li>
+      <li>「今天学什么」每日推荐面板，按词集和栏目汇总当日到期的复习内容</li>
+      <li>学习计划分组优化，支持按任意词集 × 栏目交叉筛选</li>
+      <li>段落解析内容增强，全文保留 &lt;span class="keyword"&gt; 关键词高亮标记</li>
+      <li>修复生词弹窗定位偏移问题</li>
+    </ul>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v1.3 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-07-17</div>
+    <div class="cv-desc"><strong>架构重构与性能优化。</strong>将巨石脚本拆解为清晰的命名空间模块，为后续功能迭代扫清障碍。</div>
+    <ul>
+      <li>单文件脚本重构为 Data / Renderer / Features 三层命名空间模块</li>
+      <li>引入 localStorage 缓存机制，避免每次切换词集时重复渲染 DOM</li>
+      <li>DOM 查询范围收窄、事件监听器统一生命周期管理</li>
+      <li>重写 README 文档，补充完整的架构分层说明与 smoke test 清单</li>
+    </ul>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v1.2 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-07-13 ~ 07-14</div>
+    <div class="cv-desc"><strong>抄写练习与体验打磨。</strong>新增桌面端键盘输入 + 移动端 Canvas 手写画板两种抄写模式，同时系统性修复朗读、性能和可访问性问题。</div>
+    <ul>
+      <li>新增抄写练习功能：桌面端键盘输入实时比对，手机/平板端 Canvas 画板手写（iPad 自动走画板模式）</li>
+      <li>抄写范围限定为当前栏目的五角星标记单词，无标记时弹出引导提示</li>
+      <li>抄写界面显示单词释义，完成全部单词后弹出统计提示</li>
+      <li>竖屏抄写界面添加退出按钮</li>
+      <li>修复全局变量污染导致的潜在冲突</li>
+      <li>修复快速连续点击导致的重复朗读问题</li>
+      <li>统一颜色变量，消除散落各处的硬编码色值</li>
+      <li>修复加粗单词被朗读两次及发音异常</li>
+      <li>系统性修复内存泄漏、补充无障碍 ARIA 标签</li>
+    </ul>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v1.1 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-07-12</div>
+    <div class="cv-desc"><strong>游戏化学习。</strong>将枯燥的单词复习变成拖拽交互游戏，同时引入五角星标记系统串联起所有学习环节。</div>
+    <ul>
+      <li>新增拖拽分类游戏：单词卡片带物理漂浮动画（requestAnimationFrame 驱动）</li>
+      <li>拖入「认识」或「不认识」区域完成分类，不认识单词自动标记五角星</li>
+      <li>双虚线框与五角星标记系统：文章中生词一目了然，标记状态在主页和游戏间实时同步</li>
+      <li>生词点击改为原地弹出释义弹窗（词性 + 释义），不再强制跳转词卡区域</li>
+      <li>修复手机端游戏卡片无法拖拽的问题</li>
+      <li>修复手机端游戏进度文字与退出按钮重叠、换行异常等问题</li>
+      <li>修复弹窗定位偏移和点击闪动</li>
+    </ul>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v1.0 <span class="cv-badge major">大版本</span></h3>
+    <div class="cv-date">2026-07-09 ~ 07-10</div>
+    <div class="cv-desc"><strong>项目诞生。</strong>从一张手写词汇表的照片出发，经过 OCR → 撰写主题短文 → 构建 HTML 页面，WordTales 的第一个可用版本上线。</div>
+    <ul>
+      <li>首批 7 份词集、28 个主题栏目、866 个词汇，每词配 28 篇原创语境短文</li>
+      <li>双面词卡（CSS 3D 翻转动画）+ 浏览器语音朗读</li>
+      <li>文章中生词以加粗彩色高亮，点击词卡自动翻转并朗读发音</li>
+      <li>段落解析功能：中文翻译 + 语法结构拆解 + 关键词高亮</li>
+      <li>响应式布局，适配桌面与移动端阅读场景</li>
+      <li>GitHub Pages 自动部署（GitHub Actions）</li>
+    </ul>
+  </div>
+</section>
 <footer>
 <p>
 <span class="tip-icon">学习建议：</span>建议先通读短文，根据上下文推测加粗彩色词的含义，再对照上方词卡复习。每篇短文反复阅读 2–3 遍，有助于在语境中牢固记忆单词。点击顶部按钮可在第一份至第七份之间切换。</p>

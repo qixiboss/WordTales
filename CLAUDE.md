@@ -68,6 +68,18 @@ Three integrity rules when editing content:
 
 `.trae/skills/vocab-essay/SKILL.md` defines a workflow for generating new vocab sets from images of handwritten word lists. The pipeline: image → OCR word lists → write themed essays → build HTML. Use this when the user wants to add new vocabulary content from a photo.
 
+## Changelog
+
+The `<section class="changelog" id="changelog">` in the HTML file is the canonical update log, displayed to users as "第八份：更新日志". After making a non-trivial change (feature, refactor, notable fix), append an entry there under the appropriate version heading — or create a new version heading if the change warrants it.
+
+**When to create a new version entry:**
+
+- **大版本 (major)** — a new capability category or fundamental architectural shift (e.g. learning system, audio recording, game mode). Bump the major number and reset minor: v2.0 → v2.1 for a follow-up major feature, or v2.0 → v3.0 for a paradigm shift.
+- **小版本 (minor)** — feature additions, polish waves, or accumulated fixes within the current major version. Bump the minor number: v2.1 → v2.2.
+- Individual hotfix commits don't need their own entry — batch them into the next minor version.
+
+**Format:** Each version block is a `.changelog-version` div with an `<h3>` heading containing the version number and a `<span class="cv-badge major|minor">`, followed by `.cv-date`, a `.cv-desc` summary paragraph, and a `<ul>` of concrete changes. Follow the existing Chinese-language style.
+
 ## Deployment
 
 GitHub Actions (`.github/workflows/jekyll-gh-pages.yml`) deploys on push to `main`: copies `vocab-essays/vocab-essays.html` to `_site/index.html` and publishes to GitHub Pages. Despite the workflow filename, no Jekyll processing runs.
