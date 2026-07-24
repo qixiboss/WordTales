@@ -1649,7 +1649,8 @@ display:none}
 <nav class="toc" id="toc" aria-label="栏目目录"></nav>
 <aside class="daily-reminder" id="dailyReminder" hidden aria-live="polite"></aside>
 <main id="appContent"></main>
-<section class="changelog" id="changelog" aria-label="更新日志">
+<template id="changelog-tpl">
+<div class="changelog">
   <div class="changelog-head">
     <h2>第八份：更新日志</h2>
     <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
@@ -1661,7 +1662,7 @@ display:none}
     <div class="cv-desc"><strong>真人录音与播放控制。</strong>全部 7 份词集、28 个栏目的短文朗读从机器合成语音升级为 MP3 真人录音，每段录音配有逐词级时间轴，朗读时单词随声音同步高亮。</div>
     <ul>
       <li>28 个栏目全部接入 MP3 真人朗读音频，含逐词 cue 时间线</li>
-      <li>新增播放速度调节（0.5× ~ 2×），适配不同听力阶段</li>
+      <li>新增播放速度调节（1× ~ 1.5×，六级可选），适配不同听力阶段</li>
       <li>新增悬浮式朗读控制栏，阅读过程中随时暂停/继续/调速</li>
     </ul>
   </div>
@@ -1730,7 +1731,7 @@ display:none}
     <div class="cv-date">2026-07-09 ~ 07-10</div>
     <div class="cv-desc"><strong>项目诞生。</strong>从一张手写词汇表的照片出发，经过 OCR → 撰写主题短文 → 构建 HTML 页面，WordTales 的第一个可用版本上线。</div>
     <ul>
-      <li>首批 7 份词集、28 个主题栏目、866 个词汇，每词配 28 篇原创语境短文</li>
+      <li>首批 7 份词集、28 个主题栏目、897 个词汇、28 篇原创语境短文</li>
       <li>双面词卡（CSS 3D 翻转动画）+ 浏览器语音朗读</li>
       <li>文章中生词以加粗彩色高亮，点击词卡自动翻转并朗读发音</li>
       <li>段落解析功能：中文翻译 + 语法结构拆解 + 关键词高亮</li>
@@ -1738,10 +1739,11 @@ display:none}
       <li>GitHub Pages 自动部署（GitHub Actions）</li>
     </ul>
   </div>
-</section>
+</div>
+</template>
 <footer>
 <p>
-<span class="tip-icon">学习建议：</span>建议先通读短文，根据上下文推测加粗彩色词的含义，再对照上方词卡复习。每篇短文反复阅读 2–3 遍，有助于在语境中牢固记忆单词。点击顶部按钮可在第一份至第七份之间切换。</p>
+<span class="tip-icon">学习建议：</span>建议先通读短文，根据上下文推测加粗彩色词的含义，再对照上方词卡复习。每篇短文反复阅读 2–3 遍，有助于在语境中牢固记忆单词。点击顶部按钮可在第一份至第八份之间切换，第八份为更新日志。</p>
 </footer>
 
 <script>
@@ -14897,11 +14899,23 @@ WordTales.Renderer = (function() {
     switcher.innerHTML = WordTales.Data.sets.map(function(set, index) {
       return '<button type="button" class="set-btn' + (index === 0 ? ' active' : '') + '" data-set="' + escapeHtml(set.id) + '" aria-pressed="' + (index === 0 ? 'true' : 'false') + '" aria-controls="' + escapeHtml(set.id) + '">' +
         escapeHtml(set.label) + ' · ' + set.columns.length + '列' + WordTales.Data.countWords(set) + '词</button>';
-    }).join('');
+    }).join('') +
+      '<button type="button" class="set-btn" data-set="changelog" aria-pressed="false" aria-controls="changelog">第八份 · 更新日志</button>';
     main.innerHTML = WordTales.Data.sets.map(function(set, index) {
       return '<div id="' + escapeHtml(set.id) + '" class="set-content' + (index === 0 ? ' active' : '') + '">' +
         set.columns.map(renderColumn).join('') + '</div>';
     }).join('');
+    var tpl = document.getElementById('changelog-tpl');
+    if (tpl && tpl.content) {
+      var clone = document.importNode(tpl.content, true);
+      var wrapper = document.createElement('div');
+      wrapper.id = 'changelog';
+      wrapper.className = 'set-content';
+      wrapper.setAttribute('aria-hidden', 'true');
+      wrapper.inert = true;
+      wrapper.appendChild(clone);
+      main.appendChild(wrapper);
+    }
   }
 
   return { render: render };
@@ -15827,20 +15841,11 @@ _clearReadTimer();
 if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
 if (currentBlock) unwrapWords(currentBlock);
 resetReadButtons();
-var setData = WordTales.Data.getSet(setId) || WordTales.Data.sets[0];
-if (!setData) return;
-setId = setData.id;
 document.querySelectorAll('.set-content').forEach(function(el){ el.classList.remove('active'); });
 document.querySelectorAll('.set-content').forEach(function(el){
 el.setAttribute('aria-hidden', 'true');
 el.inert = true;
 });
-var activeSet = document.getElementById(setId);
-if (!activeSet) return;
-initSetFeatures(activeSet);
-activeSet.classList.add('active');
-activeSet.setAttribute('aria-hidden', 'false');
-activeSet.inert = false;
 document.querySelectorAll('.set-btn').forEach(function(b){
 b.classList.remove('active');
 b.setAttribute('aria-pressed', 'false');
@@ -15851,6 +15856,23 @@ btn.setAttribute('aria-pressed', 'true');
 }
 var nav = document.getElementById('toc');
 nav.innerHTML = '';
+if (setId === 'changelog') {
+var activeSet = document.getElementById('changelog');
+if (!activeSet) return;
+activeSet.classList.add('active');
+activeSet.setAttribute('aria-hidden', 'false');
+activeSet.inert = false;
+document.getElementById('setMeta').textContent = '第八份 · 更新日志';
+} else {
+var setData = WordTales.Data.getSet(setId) || WordTales.Data.sets[0];
+if (!setData) return;
+setId = setData.id;
+var activeSet = document.getElementById(setId);
+if (!activeSet) return;
+initSetFeatures(activeSet);
+activeSet.classList.add('active');
+activeSet.setAttribute('aria-hidden', 'false');
+activeSet.inert = false;
 setData.columns.forEach(function(column){
 var a = document.createElement('a');
 a.href = '#' + column.id;
@@ -15858,6 +15880,7 @@ a.textContent = column.title;
 nav.appendChild(a);
 });
 document.getElementById('setMeta').textContent = WordTales.Data.getMeta(setData);
+}
 }
 
 var currentBtn = null;
@@ -18005,6 +18028,11 @@ try {
 targetId = window.location.hash ? decodeURIComponent(window.location.hash.slice(1)) : '';
 } catch (e) {
 targetId = window.location.hash.slice(1);
+}
+if (targetId === 'changelog') {
+var changelogBtn = document.querySelector('.set-btn[data-set="changelog"]');
+WordTales.Navigation.switchSet('changelog', changelogBtn);
+return;
 }
 var targetSet = null;
 WordTales.Data.sets.some(function(set){
