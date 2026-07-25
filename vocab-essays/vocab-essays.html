@@ -636,6 +636,7 @@ border-radius:8px;
 border-left:3px solid var(--accent2);
 perspective:600px;
 cursor:pointer;
+min-width:0;
 min-height:80px}
 .vocab-card:hover {
 box-shadow:0 4px 12px rgba(0,0,0,.06)}
@@ -673,6 +674,8 @@ font-weight:700;
 font-size:1rem;
 color:var(--accent);
 display:block;
+max-width:100%;
+overflow-wrap:anywhere;
 line-height:1.1}
 .card-front .vw {
 font-size:1.05rem;
@@ -1104,7 +1107,7 @@ padding:1.3rem 1.2rem}
 font-size:1rem;
 line-height:1.85}
 .vocab-grid {
-grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+grid-template-columns:repeat(2,minmax(0,1fr))}
 main {
 padding:1.5rem 1rem 3rem}
 .set-btn {
@@ -1206,8 +1209,6 @@ font-size:.62rem;
 padding:.2rem .45rem}
 }
 @media(max-width:380px) {
-.vocab-grid {
-grid-template-columns:1fr}
 .flip-toggle button {
 font-size:.58rem;
 padding:.15rem .35rem}
