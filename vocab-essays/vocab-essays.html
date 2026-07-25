@@ -159,6 +159,7 @@ background:var(--accent);
 color:#fff}
 .flip-toggle button:hover:not(.active) {
 color:var(--accent)}
+/* 游戏与抄写入口共用轻量胶囊按钮；全屏体验在 overlay 中接管交互。 */
 .game-btn {
 font-family:var(--sans);
 font-size:.68rem;
@@ -192,6 +193,7 @@ overflow:hidden;
 touch-action:none}
 .game-overlay.active {
 display:block}
+/* 抄写层与游戏层保持同一 z-index，产品逻辑保证两者不会同时存在。 */
 .copy-overlay {
 position:fixed;
 top:0;left:0;
@@ -630,6 +632,7 @@ display:grid;
 grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
 gap:.6rem;
 margin-bottom:2.2rem}
+/* 词卡：外层提供透视，inner 旋转，两个 face 用背面隐藏实现真正双面阅读。 */
 .vocab-card {
 background:var(--bg2);
 border-radius:8px;
@@ -711,6 +714,7 @@ letter-spacing:.2em;
 text-transform:uppercase;
 color:var(--muted);
 margin:0}
+/* 朗读：文章内控件负责启动，底部悬浮控件保证滚动长文时仍能随时控制。 */
 .read-controls {
 display:flex;
 align-items:center;
@@ -855,6 +859,7 @@ transition:background .2s,color .2s}
 .word:hover {
 background:var(--accent-soft);
 color:var(--accent2)}
+/* 释义弹层使用 fixed 坐标，避免被翻转文章的 3D/overflow 上下文裁切。 */
 .word-popup {
 position:fixed;
 z-index:100;
@@ -913,6 +918,7 @@ position:relative}
 0%{background:var(--accent-soft);transform:scale(1.08)}
 15%{background:var(--accent-soft);transform:scale(1.05)}
 100%{background:var(--bg2);transform:scale(1);box-shadow:none}}
+/* 段落解析复用卡片的双面隐喻，但以整篇文章为正面、单段讲解为背面。 */
 .essay-block {
 perspective:1500px}
 .essay-inner {
@@ -1090,6 +1096,7 @@ color:#fff}
 .cv-badge.minor {
 background:var(--accent-soft);
 color:var(--accent)}
+/* 窄屏优先保证正文和触控目标；工具栏可换行，游戏投放区向中心收拢。 */
 @media(max-width:600px) {
 .changelog {
 padding:2rem 1.2rem}
@@ -1250,6 +1257,7 @@ select:focus-visible,
 [role="dialog"]:focus-visible {
 outline:3px solid #0b74a5;
 outline-offset:3px}
+/* 动效是反馈增强而非功能依赖；尊重系统设置后仍保留所有操作路径。 */
 @media (prefers-reduced-motion: reduce) {
 html {
 scroll-behavior:auto}
@@ -1616,6 +1624,7 @@ padding-right:.75rem}
 .memory-heatmap {
 grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+/* 打印是完整学习材料导出：隐藏交互控件，强制展开所有词集并避免栏目被截断。 */
 @media print {
 .toc,.progress-entry,.daily-reminder,.progress-overlay {
 display:none}
@@ -1757,6 +1766,11 @@ var WordTales = window.WordTales = window.WordTales || {};
  * Module: Data
  * 新增词汇、短文或词集时，可修改 sets，或在 App 初始化前调用
  * addWords / addParagraphs / addSet；页面按钮、目录和词数会自动生成。
+ *
+ * 数据模型：
+ *   set → column → words / paragraphs → segments
+ * segment 是普通字符串或 { vocabId, text }。后者同时承担“文章高亮”和
+ * “跳转到词卡数据”的关联键；audio.cues 则与运行时拆出的文章 token 一一对应。
  * ============================================================ */
 WordTales.Data = (function() {
   var sets = [
@@ -14790,6 +14804,10 @@ WordTales.Data = (function() {
   var wordMap = Object.create(null);
   var paragraphMap = Object.create(null);
 
+  /*
+   * 用四张扁平索引换取后续功能的 O(1) 查询。所有模块都引用同一份对象，
+   * 所以通过扩展 API 加入内容时，数组顺序和索引会同步更新。
+   */
   function indexSet(set) {
     setMap[set.id] = set;
     set.columns.forEach(function(column) {
@@ -14801,6 +14819,7 @@ WordTales.Data = (function() {
 
   sets.forEach(indexSet);
 
+  // 扩展 API 在写入前拒绝未知父级和重复 ID，尽早暴露内容装配错误。
   function addWords(columnId, words) {
     var column = columnMap[columnId];
     if (!column) throw new Error('Unknown column: ' + columnId);
@@ -14854,8 +14873,10 @@ WordTales.Data = (function() {
 /* ============================================================
  * Module: Renderer
  * 将 Data 模块转换成页面 DOM；功能模块不再负责拼装内容数据。
+ * Renderer 只负责“数据 → 初始 DOM”，翻卡、朗读等增强行为统一在渲染后初始化。
  * ============================================================ */
 WordTales.Renderer = (function() {
+  // 内容数据也按不可信输入转义；仅 Analysis 模块另有一条极小的标签白名单。
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, '&amp;')
@@ -14868,6 +14889,7 @@ WordTales.Renderer = (function() {
   function renderSegments(segments) {
     return segments.map(function(segment) {
       if (typeof segment === 'string') return escapeHtml(segment);
+      // data-vocab-id 比按文本查词可靠，同一个英文词可以在不同专栏拥有不同释义。
       return '<strong class="word" data-vocab-id="' + escapeHtml(segment.vocabId) + '">' + escapeHtml(segment.text) + '</strong>';
     }).join('');
   }
@@ -14906,6 +14928,10 @@ WordTales.Renderer = (function() {
       return '<div id="' + escapeHtml(set.id) + '" class="set-content' + (index === 0 ? ' active' : '') + '">' +
         set.columns.map(renderColumn).join('') + '</div>';
     }).join('');
+    /*
+     * 更新日志保存在 template 中，避免首屏直接展示；渲染时克隆为普通 set-content，
+     * 这样 Navigation 可以把它当作第八个页签统一管理。
+     */
     var tpl = document.getElementById('changelog-tpl');
     if (tpl && tpl.content) {
       var clone = document.importNode(tpl.content, true);
@@ -14930,6 +14956,12 @@ WordTales.Renderer = (function() {
  * 优先使用 IndexedDB 异步保存；localStorage 仅用于兼容与降级。
  * ============================================================ */
 WordTales.LearningProgress = (function() {
+  /*
+   * 持久化分成两类：
+   * - profiles：当前聚合状态，启动时一次读取，交互中以 180ms 防抖覆盖；
+   * - events：追加式行为日志，便于将来分析，但最多保留最近 3000 条。
+   * IndexedDB 不可用时，两者合并回 localStorage，保证离线和隐私模式仍可学习。
+   */
   var STORAGE_KEY = 'wordtales.learning.v1';
   var MIGRATION_KEY = 'wordtales.learning.indexeddb-migrated';
   var DB_NAME = 'wordtales-learning';
@@ -14953,6 +14985,7 @@ WordTales.LearningProgress = (function() {
   var articleObserver = null;
   var currentDay = '';
 
+  /* ---------- 时间与档案结构：所有持久化时间统一为 ISO，展示分组使用本地日历日。 ---------- */
   function nowIso() { return new Date().toISOString(); }
   function dayKey(date) {
     var d = date || new Date();
@@ -14983,6 +15016,7 @@ WordTales.LearningProgress = (function() {
     };
   }
   function normalizeData(candidate) {
+    // 逐字段补默认值，使旧版本或部分写入的档案可以向前兼容，而不是整份丢弃。
     var store = candidate && candidate.version === 1 ? candidate : freshData();
     store.words = store.words || {};
     store.articles = store.articles || {};
@@ -14994,6 +15028,7 @@ WordTales.LearningProgress = (function() {
     return store;
   }
   function load() {
+    // data 是本页会话内的单一事实来源，避免每次统计都同步解析 localStorage。
     if (data) return data;
     try {
       data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
@@ -15015,6 +15050,7 @@ WordTales.LearningProgress = (function() {
     return new Promise(function(resolve, reject) {
       var request = window.indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = function() {
+        // profiles 与 events 分库是为了更新学习状态时不反复重写整段历史。
         var db = request.result;
         if (!db.objectStoreNames.contains('profiles')) {
           db.createObjectStore('profiles', { keyPath: 'id' });
@@ -15043,6 +15079,7 @@ WordTales.LearningProgress = (function() {
     });
   }
   function profileSnapshot() {
+    // events 已单独存储；从快照删除它可显著缩小高频 profile 写入量。
     var snapshot = JSON.parse(JSON.stringify(load()));
     delete snapshot.events;
     return snapshot;
@@ -15062,6 +15099,7 @@ WordTales.LearningProgress = (function() {
     store.updatedAt = nowIso();
     if (persistenceMode === 'indexedDB' && database) {
       if (profileSaveTimer) clearTimeout(profileSaveTimer);
+      // 连续翻卡或点词会形成突发写入，短防抖既保护存储也不明显增加丢失窗口。
       profileSaveTimer = setTimeout(function() {
         profileSaveTimer = null;
         writeProfileNow().catch(function() {
@@ -15106,6 +15144,7 @@ WordTales.LearningProgress = (function() {
       var countRequest = store.count();
       countRequest.onerror = function() {};
       countRequest.onsuccess = function() {
+        // 自增主键的游标天然从旧到新，删除最早记录即可保留最近行为。
         var remaining = Math.max(0, countRequest.result - MAX_EVENTS);
         if (!remaining) return;
         var cursorRequest = store.openCursor();
@@ -15121,6 +15160,7 @@ WordTales.LearningProgress = (function() {
     });
   }
   function migrateFallbackToDatabase(db, fallback) {
+    // profile 与旧事件在同一事务迁移，防止中途失败后只迁了一半。
     return new Promise(function(resolve, reject) {
       var transaction = db.transaction(['profiles', 'events'], 'readwrite');
       transaction.oncomplete = function() { resolve(); };
@@ -15150,6 +15190,10 @@ WordTales.LearningProgress = (function() {
     return openDatabase().then(function(db) {
       return requestToPromise(db.transaction('profiles', 'readonly').objectStore('profiles').get('current'))
         .then(function(savedProfile) {
+          /*
+           * 迁移期可能同时存在两份档案。updatedAt 决定胜者，避免用旧 IndexedDB
+           * 覆盖用户刚在降级模式下产生的新进度。
+           */
           var localIsNewer = validLocalProfile && validLocalProfile.version === 1 && (!savedProfile ||
             new Date(fallback.updatedAt).getTime() > new Date(savedProfile.updatedAt || 0).getTime());
           if (savedProfile && !localIsNewer) {
@@ -15170,11 +15214,13 @@ WordTales.LearningProgress = (function() {
           return pruneEventDatabase();
         });
     }).catch(function() {
+      // 存储权限、隐私模式或升级阻塞都不应阻断主应用，统一降级为 localStorage。
       persistenceMode = 'localStorage';
       data = normalizeData(fallback);
     });
   }
   function ensureDay() {
+    // days 是仪表盘的日聚合缓存，避免每次打开面板重扫完整事件历史。
     var key = dayKey();
     var store = load();
     if (!store.days[key]) {
@@ -15205,6 +15251,10 @@ WordTales.LearningProgress = (function() {
     addEventToDatabase(event);
   }
   function buildIndexes() {
+    /*
+     * 在 Data 索引之外再保留“词 → 所属专栏/词集”的上下文索引，
+     * 供复习计划分组、热力图导航和旧星标迁移共同使用。
+     */
     wordIndex = Object.create(null);
     wordByText = Object.create(null);
     columnIndex = Object.create(null);
@@ -15237,6 +15287,10 @@ WordTales.LearningProgress = (function() {
     });
   }
   function migrateStarredWords() {
+    /*
+     * 旧版星标只有英文文本，没有 vocabId。用小写文本映射到第一个匹配词，
+     * 并把星标视为一次“不熟悉”记录，使旧用户立即进入新的复习计划。
+     */
     var store = load();
     if (store.migratedStarredWords) return;
     var starred = [];
@@ -15268,6 +15322,7 @@ WordTales.LearningProgress = (function() {
     save();
   }
   function ensureWordRecord(id) {
+    // 首次接触只创建记录；具体操作分支决定是否以及何时安排复习。
     var store = load();
     var record = store.words[id];
     if (!record) {
@@ -15291,6 +15346,7 @@ WordTales.LearningProgress = (function() {
     return record;
   }
   function scheduleFirstReview(record, baseDate) {
+    // 点词和翻卡是“接触”而非测验，只在没有计划时安排温和的一日后复习。
     if (!record.nextReview) {
       record.intervalDays = 1;
       record.stabilityDays = Math.max(record.stabilityDays || 1, 1);
@@ -15298,6 +15354,7 @@ WordTales.LearningProgress = (function() {
     }
   }
   function queueUntilReady(operation) {
+    // IndexedDB 恢复是异步的；排队可避免首屏立即点击被后到的档案覆盖。
     if (isReady) return false;
     pendingOperations.push(operation);
     return true;
@@ -15320,6 +15377,7 @@ WordTales.LearningProgress = (function() {
       today.cardFlips++;
       scheduleFirstReview(record, timestamp);
     } else if (action === 'unknown') {
+      // 忘记：缩短到半天，并乘法削弱稳定度；下限防止调度趋近于零。
       record.reviewCount++;
       record.unfamiliarCount++;
       record.lapses++;
@@ -15330,6 +15388,7 @@ WordTales.LearningProgress = (function() {
       record.nextReview = addDays(timestamp, .5).toISOString();
       today.unfamiliar++;
     } else if (action === 'known' || action === 'review') {
+      // 记得：连续正确逐步放大间隔，上限 90 天，避免纯前端启发式无限外推。
       record.reviewCount++;
       record.correctCount++;
       record.failureStreak = 0;
@@ -15360,6 +15419,7 @@ WordTales.LearningProgress = (function() {
       };
     }
     record.lastViewed = timestamp;
+    // 同一文章一天只计一次，滚动抖动或往返查看不会虚增阅读量。
     if (record.lastViewedDay !== dayKey()) {
       record.viewCount++;
       record.lastViewedDay = dayKey();
@@ -15390,6 +15450,10 @@ WordTales.LearningProgress = (function() {
     refreshOpenDashboard();
   }
   function recallProbability(id, at) {
+    /*
+     * 简化遗忘曲线 P=e^(-t/S)：S 越大衰减越慢；历史遗忘额外施加折扣。
+     * 这是可解释的本地启发式估计，不冒充经过用户数据拟合的 FSRS/SM-2。
+     */
     var record = load().words[id];
     if (!record) return null;
     var anchor = record.lastReview || record.lastSeen || record.firstSeen;
@@ -15401,6 +15465,7 @@ WordTales.LearningProgress = (function() {
     return Math.max(0, Math.min(1, probability));
   }
   function memoryState(id, at) {
+    // 颜色优先级是“强制到期 > 即将到期/低概率 > 已学习”，灰色仅代表无记录。
     var record = load().words[id];
     if (!record) return 'gray';
     var now = at || new Date();
@@ -15414,6 +15479,7 @@ WordTales.LearningProgress = (function() {
     return allWordItems;
   }
   function dueWords() {
+    // “今日”包含截至本地 23:59:59 到期的词，便于用户提前完成当天计划。
     var deadline = endOfToday();
     return allWords().filter(function(item) {
       var record = load().words[item.word.id];
@@ -15426,6 +15492,7 @@ WordTales.LearningProgress = (function() {
     });
   }
   function groupDueColumns(due) {
+    // 推荐入口落在专栏而非孤立词，延续“在语境中复习”的产品本意。
     var counts = {};
     due.forEach(function(item) {
       counts[item.column.id] = (counts[item.column.id] || 0) + 1;
@@ -15447,6 +15514,7 @@ WordTales.LearningProgress = (function() {
     return active ? active.id : (WordTales.Data.sets[0] ? WordTales.Data.sets[0].id : '');
   }
   function floatJumpTarget(target) {
+    // 重启动画前强制一次 reflow，确保重复点击热力图时仍能看到定位反馈。
     if (!target) return;
     if (target._progressJumpTimer) clearTimeout(target._progressJumpTimer);
     target.classList.remove('progress-jump-float');
@@ -15459,6 +15527,7 @@ WordTales.LearningProgress = (function() {
     }, 1650);
   }
   function navigateTo(item) {
+    // 先切词集再关闭面板，等 DOM 恢复可交互后才滚动和聚焦目标。
     var setId = item.set.id;
     var button = document.querySelector('.set-btn[data-set="' + setId + '"]');
     if (WordTales.Navigation) WordTales.Navigation.switchSet(setId, button);
@@ -15496,6 +15565,7 @@ WordTales.LearningProgress = (function() {
     return li;
   }
   function fillPlanList(list, items, mapper, emptyText) {
+    // 空状态也是计划的一部分，避免空容器被误解为加载失败。
     list.innerHTML = '';
     if (!items.length) {
       var empty = document.createElement('li');
@@ -15515,6 +15585,7 @@ WordTales.LearningProgress = (function() {
     grid.innerHTML = '';
     var selectedSet = WordTales.Data.getSet(heatmapSetId) || WordTales.Data.sets[0];
     if (!selectedSet) return;
+    // 视觉顺序严格跟随教材中的“列 → 词”，而不是按记忆状态重新排序。
     selectedSet.columns.forEach(function(column) {
       column.words.forEach(function(word) {
         var state = memoryState(word.id);
@@ -15536,6 +15607,10 @@ WordTales.LearningProgress = (function() {
     });
   }
   function renderDashboard() {
+    /*
+     * 面板每次打开都从当前内存档案重绘，不维护第二份 UI 状态。
+     * 这让游戏分类、文章曝光和解析点击能立即反映到统计与热力图。
+     */
     if (!panel) return;
     var store = load();
     var due = dueWords();
@@ -15619,6 +15694,7 @@ WordTales.LearningProgress = (function() {
     if (entry) entry.focus();
   }
   function buildDashboard() {
+    // 面板首次打开时才创建，减轻首屏 DOM；后续只重绘 panel 内部。
     overlay = document.createElement('div');
     overlay.className = 'progress-overlay';
     overlay.setAttribute('role', 'dialog');
@@ -15636,6 +15712,7 @@ WordTales.LearningProgress = (function() {
     document.body.appendChild(overlay);
   }
   function setBackgroundInert(inert) {
+    // 隔离背景，避免读屏或键盘焦点穿透到面板背后的学习内容。
     ['progressEntry', 'dailyReminder', 'appContent', 'toc', 'setSwitcher'].forEach(function(id) {
       var element = document.getElementById(id);
       if (element) element.inert = inert;
@@ -15650,6 +15727,10 @@ WordTales.LearningProgress = (function() {
     return '今天没有到期内容，可以自由复习任意一列。';
   }
   function showDailyReminder(force) {
+    /*
+     * 默认每天只展示一次；force 用于跨日后刷新。通知属于可选增强，
+     * 页面内 banner 始终是主路径，因此这里不会主动索取浏览器通知权限。
+     */
     var store = load();
     var today = dayKey();
     if (!force && store.reminders.lastShown === today) return;
@@ -15683,6 +15764,7 @@ WordTales.LearningProgress = (function() {
     }
   }
   function observeArticles() {
+    // 文章至少进入视口 25% 才算浏览，再由 trackArticle 做“每日一次”去重。
     if (!('IntersectionObserver' in window)) return;
     articleObserver = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry) {
@@ -15697,6 +15779,10 @@ WordTales.LearningProgress = (function() {
     });
   }
   function init() {
+    /*
+     * 初始化顺序不能颠倒：先建静态索引和同步 fallback，再异步选择最新档案；
+     * 完成后才回放排队操作、启用入口和注册观察器。
+     */
     buildIndexes();
     load();
     currentDay = dayKey();
@@ -15718,6 +15804,7 @@ WordTales.LearningProgress = (function() {
       queued.forEach(function(operation) { operation(); });
       observeArticles();
       showDailyReminder(false);
+      // pagehide 兼容移动端与往返缓存，用它冲刷尚未触发的防抖保存。
       window.addEventListener('pagehide', function() {
         if (profileSaveTimer) {
           clearTimeout(profileSaveTimer);
@@ -15725,6 +15812,7 @@ WordTales.LearningProgress = (function() {
         }
         writeProfileNow().catch(function() {});
       });
+      // 页面长时间保持打开时，每分钟检测跨日并重建今日计划。
       window.setInterval(function() {
         var nextDay = dayKey();
         if (nextDay !== currentDay) {
@@ -15756,6 +15844,12 @@ WordTales.LearningProgress = (function() {
  * 每个模块只暴露页面需要直接调用的函数，其余状态保留在闭包内。
  * ============================================================ */
 WordTales.Features = (function() {
+/*
+ * 共享 modal 基础设施
+ *
+ * 游戏、抄写和旋转提示都需要相同的无障碍行为：背景 inert、焦点圈定、
+ * Escape 关闭和退出后恢复焦点。集中管理可避免多个全屏功能叠加监听器。
+ */
 var _activeModal = null;
 var _modalPreviousFocus = null;
 var _modalClose = null;
@@ -15782,6 +15876,7 @@ if (_modalClose) _modalClose();
 return;
 }
 if (e.key !== 'Tab') return;
+// 手工构造焦点环，防止 Tab 离开无原生 <dialog> 的自定义遮罩。
 var focusables = getModalFocusables(_activeModal);
 if (focusables.length === 0) {
 e.preventDefault();
@@ -15801,6 +15896,7 @@ first.focus();
 
 function activateModal(container, closeFn, label) {
 if (!_activeModal) {
+// 仅第一层 modal 隔离页面；横竖屏提示切到画板时会复用同一层状态。
 _modalPreviousFocus = document.activeElement;
 setPageInert(true);
 document.addEventListener('keydown', handleModalKeydown);
@@ -15828,6 +15924,7 @@ if (previous && typeof previous.focus === 'function') previous.focus();
 }
 
 function initSetFeatures(root) {
+// 各初始化器都具备幂等保护，因此切回已访问词集不会重复绑定事件。
 if (!root) return;
 initFlipCards(root);
 initFlipToggles(root);
@@ -15837,6 +15934,10 @@ initWordJump(root);
 }
 
 function switchSet(setId, btn) {
+/*
+ * 切换前先终止朗读和弹层，再改变 active/inert 状态。这样隐藏词集里不会
+ * 残留语音、高亮或可被键盘聚焦的控件。目录始终从 Data 重建以保持一致。
+ */
 closeWordPopups();
 _clearReadTimer();
 if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
@@ -15858,6 +15959,7 @@ btn.setAttribute('aria-pressed', 'true');
 var nav = document.getElementById('toc');
 nav.innerHTML = '';
 if (setId === 'changelog') {
+// 更新日志没有 column 数据，因此走独立元信息分支，但仍复用 set-content 容器。
 var activeSet = document.getElementById('changelog');
 if (!activeSet) return;
 activeSet.classList.add('active');
@@ -15897,11 +15999,18 @@ var _readRate = 1;
 var _readPaused = false;
 var _floatingReadControls = null;
 
+/*
+ * Reader 的共享状态保证任意时刻只有一条朗读链：
+ * - 录音优先使用 audio + cues 获得稳定音色和逐词同步；
+ * - 缺少录音或加载失败时退回 SpeechSynthesis；
+ * - runId / readCancelled 让旧异步回调在切换或停止后自动失效。
+ */
 function _clearReadTimer() {
 if (_readTimer) { clearTimeout(_readTimer); _readTimer = null; }
 }
 
 function createRateSelect(className) {
+// 页面内和悬浮控制条使用同一速率状态，任一选择器改变都会同步另一处。
 var select = document.createElement('select');
 select.className = 'read-rate-select' + (className ? ' ' + className : '');
 select.setAttribute('aria-label', '朗读倍速');
@@ -15919,6 +16028,7 @@ return select;
 }
 
 function setReadRate(rate) {
+// 白名单限制 UI 和外部调用只能使用经过版面测试的倍速。
 if (![1, 1.1, 1.2, 1.3, 1.4, 1.5].some(function(value){ return Math.abs(value - rate) < 0.001; })) {
 rate = 1;
 }
@@ -15958,6 +16068,7 @@ if (_floatingReadControls) _floatingReadControls.hidden = true;
 }
 
 function stopCurrentReading() {
+// 所有停止入口最终汇聚到同一清理路径，避免音频停了但 token 包装仍留在 DOM。
 var activeBlock = currentBlock;
 readCancelled = true;
 _clearReadTimer();
@@ -15968,6 +16079,7 @@ resetReadButtons();
 }
 
 function toggleReadPause() {
+// Audio 与 SpeechSynthesis API 不同，但在这里统一成相同的暂停按钮语义。
 if (!currentBtn || readCancelled) return;
 _readPaused = !_readPaused;
 if (_currentAudio) {
@@ -15990,6 +16102,7 @@ else if (status) status.textContent = '朗读中 · x' + _readRate.toFixed(1);
 }
 
 function initFloatingReadControls() {
+// 控件挂到 body 而非文章内部，长文滚动时仍可暂停或停止。
 if (_floatingReadControls) return;
 var controls = document.createElement('div');
 controls.className = 'read-floating-controls';
@@ -16028,6 +16141,7 @@ _floatingReadControls = controls;
 }
 
 function stopRecordedAudio() {
+// 递增 runId 会令旧 requestAnimationFrame 回调失效，即使浏览器稍后才执行它。
 _audioRunId++;
 if (_audioRaf !== null) {
 cancelAnimationFrame(_audioRaf);
@@ -16056,6 +16170,7 @@ popup.remove();
 }
 
 function resetReadButtons() {
+// reset 是 Reader 的状态归零点；调用者无需知道当前走的是录音还是系统语音。
 readCancelled = true;
 _clearReadTimer();
 stopRecordedAudio();
@@ -16080,6 +16195,7 @@ el.classList.remove('reading-highlight');
 }
 
 function unwrapWords(block) {
+// 朗读结束后恢复原始文本节点，避免重复朗读不断嵌套 span.tok。
 block.querySelectorAll('span.tok').forEach(function(span){
 var parent = span.parentNode;
 parent.replaceChild(document.createTextNode(span.textContent), span);
@@ -16088,6 +16204,10 @@ block.querySelectorAll('p').forEach(function(p){ p.normalize(); });
 }
 
 function wrapWords(paragraphs) {
+/*
+ * 在不破坏 <strong class="word"> 等语义节点的前提下，只拆文本节点。
+ * 每个 token 保存全文字符区间，供 SpeechSynthesis 的 charIndex 二分定位。
+ */
 var tokens = [];
 var fullText = '';
 var ctx = { tokens: tokens, fullText: fullText };
@@ -16142,6 +16262,10 @@ loadVoices();
 }
 
 function pickBestVoice(voices) {
+/*
+ * Web Speech 的 voice 名称依操作系统而异。优先表覆盖常见自然音色，
+ * 再按 neural/premium、en-US、任意英文逐级降级，保证可用性优先。
+ */
 if (!voices || voices.length === 0) voices = loadVoices();
 if (!voices || voices.length === 0) return null;
 
@@ -16181,6 +16305,7 @@ return enVoices[0];
 }
 
 function toggleSpeechRead(block, btn) {
+// SpeechSynthesis 是无录音专栏与录音失败时的完整降级路径。
 if (typeof window.speechSynthesis === 'undefined' || typeof window.SpeechSynthesisUtterance === 'undefined') {
 btn.textContent = '暂不支持朗读';
 btn.disabled = true;
@@ -16236,6 +16361,10 @@ btn.classList.remove('reading');
 return;
 }
 
+/*
+ * 按句号确定语气、再按逗号切短句。短 utterance 的 boundary 事件通常更稳定，
+ * 也能在分句间加入自然停顿，但必须保存全局字符偏移以继续高亮原文。
+ */
 var chunks = [];
 var sentences = result.fullText.match(/[^.!?]+[.!?]*/g) || [result.fullText];
 var sentOffset = 0;
@@ -16269,6 +16398,7 @@ totalClauses: clauses.length
 });
 
 function findTokenByGlobalChar(globalChar) {
+// token 区间按字符位置有序，二分查询避免每个 boundary 都线性扫描整篇文章。
 var lo = 0, hi = result.tokens.length - 1;
 while (lo <= hi) {
 var mid = (lo + hi) >> 1;
@@ -16296,6 +16426,7 @@ RATE_MIN: 0.80, RATE_MAX: 1.05
 };
 
 function getProsody(chunk) {
+// 标点、分句位置和句长共同微调语速音高，最后钳制到浏览器表现稳定的范围。
 var pitch = PROSODY.STATEMENT_PITCH;
 var rate = PROSODY.STATEMENT_RATE;
 var wordCount = chunk.text.split(/\s+/).length;
@@ -16330,6 +16461,7 @@ return { pitch: pitch, rate: rate };
 }
 
 function speakNext() {
+// 一个 chunk 完成后才创建下一个 utterance，使取消、暂停和分句停顿都可控。
 if (readCancelled) return;
 if (chunkIdx >= chunks.length) {
 btn.textContent = '朗读';
@@ -16452,6 +16584,7 @@ _readTimer = setTimeout(speakNext, 200);
 }
 
 function getRecordedAudioConfig(block) {
+// 专栏 ID 是 DOM 与 Data 的连接点；audio 缺省即表示该列应使用系统语音。
 var section = block && block.closest('.column-section');
 if (!section || !WordTales.Data.getColumn) return null;
 var column = WordTales.Data.getColumn(section.id);
@@ -16459,6 +16592,10 @@ return column && column.audio ? column.audio : null;
 }
 
 function toggleRecordedRead(block, btn, audioConfig) {
+/*
+ * 录音模式仍复用 wrapWords 生成的 token，只把“当前读到哪里”的来源
+ * 从 boundary.charIndex 换成 audio.currentTime → cue。
+ */
 if (currentBtn === btn && !readCancelled) {
 stopCurrentReading();
 return;
@@ -16476,6 +16613,7 @@ var tokenCount = result.tokens.length;
 var cues = Array.isArray(audioConfig.cues) ? audioConfig.cues : [];
 
 function fallBackToSpeech(message) {
+// 降级前完全拆除录音态，再走正常 Speech 路径，避免两套播放状态并存。
 if (readCancelled) return;
 readCancelled = true;
 stopRecordedAudio();
@@ -16500,6 +16638,7 @@ return;
 
 var validCues = [];
 cues.forEach(function(cue, index){
+// null cue 保留 token 位置但不参与二分时间搜索，适合未读出的标点或省略词。
 if (!Array.isArray(cue) || cue.length !== 2) return;
 validCues.push({ index: index, start: cue[0], end: cue[1] });
 });
@@ -16535,6 +16674,7 @@ btn.classList.add('reading');
 showFloatingReadControls();
 
 function findCueAt(time) {
+// cue 按开始时间排序；先找最后一个 start<=time，再确认仍处于结束时间内。
 var lo = 0;
 var hi = validCues.length - 1;
 var candidate = -1;
@@ -16553,6 +16693,7 @@ return time <= cue.end + 0.02 ? cue : null;
 }
 
 function updateRecordedProgress() {
+// 用动画帧驱动视觉同步，比 timeupdate 的低频事件更适合逐词高亮。
 if (readCancelled || runId !== _audioRunId || _currentAudio !== audio) return;
 var duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
 var percent = duration ? Math.min(100, Math.round((audio.currentTime / duration) * 100)) : 0;
@@ -16586,6 +16727,7 @@ _audioRaf = requestAnimationFrame(updateRecordedProgress);
 }
 
 function handleAudioFailure() {
+// error 与 play() rejection 可能同时到达，fallingBack 保证只降级一次。
 if (fallingBack || readCancelled || runId !== _audioRunId) return;
 fallingBack = true;
 fallBackToSpeech('录音加载失败');
@@ -16640,6 +16782,7 @@ playPromise.catch(handleAudioFailure);
 }
 
 function toggleRead(block, btn) {
+// 录音元数据存在即优先录音；内部任何校验/加载失败都会无缝退回系统语音。
 var audioConfig = getRecordedAudioConfig(block);
 if (audioConfig) {
 toggleRecordedRead(block, btn, audioConfig);
@@ -16649,6 +16792,7 @@ toggleSpeechRead(block, btn);
 }
 
 function initReadAloud(root) {
+// 按需增强 Renderer 产出的 h3；essay-head 也是重复初始化的幂等标记。
 initFloatingReadControls();
 (root || document).querySelectorAll('.essay-block').forEach(function(block){
 if (block.querySelector('.essay-head')) return;
@@ -16679,6 +16823,7 @@ block.insertBefore(head, block.firstChild);
 }
 
 function speakWord(word) {
+// 单词点读会取消当前系统语音，避免单词发音与全文 TTS 同时说话。
 if (typeof speechSynthesis === 'undefined') return;
 speechSynthesis.cancel();
 var utterance = new SpeechSynthesisUtterance(word);
@@ -16692,6 +16837,10 @@ speechSynthesis.speak(utterance);
 }
 
 function initWordJump(root) {
+/*
+ * WordPopup 优先用稳定的 data-vocab-id 查 Data；cardMap 和模糊文本匹配只为
+ * 兼容旧手写 DOM。弹层挂到 body，可避开文章翻转与 overflow 的裁切上下文。
+ */
 (root || document).querySelectorAll('.essay-block').forEach(function(block){
 var section = block.closest('.column-section');
 if (!section) return;
@@ -16772,6 +16921,7 @@ popup.addEventListener('click', function(ev){ ev.stopPropagation(); });
 popup.style.visibility = 'hidden';
 popup.style.animation = 'none';
 document.body.appendChild(popup);
+// 先不可见地测量真实尺寸，再在上下可用空间中选择更宽裕的一侧并钳制到视口。
 var wordRect = wordEl.getBoundingClientRect();
 var popupRect = popup.getBoundingClientRect();
 var viewportGap = 8;
@@ -16834,6 +16984,10 @@ var _gameSection = null;
 var _starredCache = null;
 var _starredCacheValid = false;
 
+/*
+ * Progress（星标）保留独立 localStorage 格式，是为了兼容旧版和抄写功能。
+ * LearningProgress 会在首次升级时把星标迁入调度记录，但不会接管这份列表。
+ */
 function getStarredWords() {
 if (_starredCacheValid) return _starredCache;
 try {
@@ -16869,6 +17023,7 @@ return getStarredWords().indexOf(word) >= 0;
 }
 
 function updateMainCardStars(section) {
+// 游戏修改星标后立即镜像到主词卡；DOM 星形只是缓存的视觉投影。
 var starred = getStarredWords();
 (section || document).querySelectorAll('.vocab-card').forEach(function(card){
 var vw = card.querySelector('.vw');
@@ -16889,6 +17044,7 @@ existing.remove();
 }
 
 function updateDzRects() {
+// 碰撞循环读取缓存矩形，只有开始和 resize 时才触发布局测量。
 cachedDzRects = gameDropzones.map(function(dz){
 return dz ? dz.getBoundingClientRect() : null;
 });
@@ -16898,6 +17054,10 @@ return rect ? Math.max(maxBottom, rect.bottom + 16) : maxBottom;
 }
 
 function startGame(section) {
+/*
+ * Game 为当前专栏克隆一组全屏卡片。克隆而不是搬移主卡片，可以让退出游戏
+ * 成为纯清理操作，也避免破坏原页面的翻卡状态和布局。
+ */
 var cards = section.querySelectorAll('.vocab-card');
 if (cards.length === 0) return;
 
@@ -17006,6 +17166,7 @@ star.textContent = '\u2605';
 gameCard.appendChild(star);
 }
 
+// 随机尝试不重叠起点；达到上限后允许重叠，避免小屏幕陷入无限寻找。
 var cardW = CARD_W;
 var cardH = CARD_H;
 var maxAttempts = 50;
@@ -17054,6 +17215,10 @@ gameResizeHandler = _debouncedUpdateDzRects;
 }
 
 function startFloatLoop() {
+/*
+ * requestAnimationFrame 只更新 transform，不改布局属性；系统要求减少动态效果时
+ * 完全跳过漂浮，拖拽和键盘分类仍保持可用。
+ */
 if (floatReq) cancelAnimationFrame(floatReq);
 if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 floatCards = Array.prototype.slice.call(document.querySelectorAll('.game-card.floating'));
@@ -17085,6 +17250,7 @@ if (s.x >= w - CARD_W) { s.x = w - CARD_W; s.vx = -Math.abs(s.vx); }
 if (s.y <= gameFloatTop) { s.y = gameFloatTop; s.vy = Math.abs(s.vy); }
 if (s.y >= h - CARD_H) { s.y = h - CARD_H; s.vy = -Math.abs(s.vy); }
 dzList.forEach(function(dz){
+// 漂浮卡把投放区视作障碍物，只有用户主动拖入时才会触发分类。
 if (!dz) return;
 if (s.x + CARD_W > dz.left && s.x < dz.right &&
 s.y + CARD_H > dz.top && s.y < dz.bottom) {
@@ -17110,6 +17276,7 @@ floatReq = requestAnimationFrame(step);
 }
 
 function makeFloatable(card) {
+// 指针事件生命周期绑在 document 上，拖出卡片边界后仍能收到 move/end。
 var isDragging = false;
 var startX, startY, offsetX, offsetY;
 
@@ -17161,6 +17328,7 @@ document.removeEventListener('touchmove', onMove);
 document.removeEventListener('touchend', onEnd);
 var cardRect = card.getBoundingClientRect();
 var targetDz = null;
+// 松手时以矩形相交判定投放，不要求指针中心落在区域内，触屏更宽容。
 gameDropzones.forEach(function(dz){
 var dzRect = dz.getBoundingClientRect();
 if (cardRect.left < dzRect.right && cardRect.right > dzRect.left &&
@@ -17199,6 +17367,10 @@ document.removeEventListener('touchend', onEnd);
 }
 
 function dropCard(card, targetDz) {
+/*
+ * 每个投放区只展示最近一张卡；旧卡移除但其学习结果已持久化。
+ * “不太认识”同步加星并缩短复习，“比较认识”则移除星标并延长间隔。
+ */
 if (targetDz.currentCard && targetDz.currentCard !== card) {
 removeDroppedCard(targetDz.currentCard);
 }
@@ -17266,6 +17438,7 @@ parentDz.classList.add('empty');
 }
 
 function endGame() {
+// 退出时同时撤销 RAF、窗口监听和每张卡的 document 监听，防止后台继续运算。
 if (floatReq) {
 cancelAnimationFrame(floatReq);
 floatReq = null;
@@ -17297,7 +17470,12 @@ var copyLastY = 0;
 var copyOrientationHandler = null;
 var copyCanvasResizeHandler = null;
 
+/*
+ * CopyPractice 只练当前专栏的星标词，形成“游戏暴露薄弱项 → 定向抄写”的闭环。
+ * 桌面端验证键盘拼写；触屏端提供 Canvas 自主手写，不做易误判的 OCR 判分。
+ */
 function isMobile() {
+// 宽度用于普通手机，UA/触点判断覆盖横屏 iPad 和伪装成 Mac 的 iPadOS。
 if (window.matchMedia('(max-width: 600px)').matches) return true;
 var ua = navigator.userAgent;
 if (/iPhone|iPod/i.test(ua)) return true;
@@ -17311,6 +17489,7 @@ var _copyCardMap = null;
 var _copySection = null;
 
 function buildCopyCardMap() {
+// 释义缓存限定在本次专栏，避免同形词从其他专栏取到不同词性或含义。
 var map = {};
 if (!_copySection) return map;
 _copySection.querySelectorAll('.vocab-card').forEach(function(card){
@@ -17342,6 +17521,7 @@ section.querySelectorAll('.vocab-card .vw').forEach(function(vw){
 sectionWords.push(vw.textContent.trim().toLowerCase());
 });
 }
+// 全局星标与当前专栏取交集，保证入口所在栏目就是练习上下文。
 var sectionStarred = starred.filter(function(w){
 return sectionWords.indexOf(w.toLowerCase()) >= 0;
 });
@@ -17360,6 +17540,7 @@ startCopyDesktop();
 }
 
 function showCopyAlert(section) {
+// 空列表不是死路：直接提供进入同栏目游戏的行动入口。
 var mask = document.createElement('div');
 mask.className = 'copy-alert-mask';
 var box = document.createElement('div');
@@ -17401,6 +17582,7 @@ activateModal(mask, function(){ deactivateModal(); mask.remove(); }, '未标记�
 }
 
 function shuffleArray(arr) {
+// 原地 Fisher–Yates，重新开始时打破固定顺序带来的位置记忆。
 for (var i = arr.length - 1; i > 0; i--) {
 var j = Math.floor(Math.random() * (i + 1));
 var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
@@ -17408,6 +17590,7 @@ var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
 }
 
 function buildCopyOverlay() {
+// 桌面和移动练习共用标题、进度和退出区，只替换主体交互。
 if (copyOverlay) { copyOverlay.remove(); copyOverlay = null; }
 copyOverlay = document.createElement('div');
 copyOverlay.className = 'copy-overlay active';
@@ -17438,6 +17621,7 @@ return copyOverlay;
 }
 
 function startCopyDesktop() {
+// 桌面模式大小写不敏感，但要求整词一致；错误只给即时视觉反馈，不自动泄露答案。
 var overlay = buildCopyOverlay();
 activateModal(overlay, endCopy, '抄写练习');
 
@@ -17520,6 +17704,7 @@ copyOverlay._input.focus();
 }
 
 function startCopyMobile() {
+// 画布需要横向空间，竖屏先展示旋转提示；方向变化时复用同一 modal 状态。
 var overlay = buildCopyOverlay();
 
 var rotateHint = document.createElement('div');
@@ -17565,6 +17750,7 @@ checkOrientation();
 }
 
 function setupCanvas() {
+// 方向监听可能多次触发，_canvasSetup 保证画布和监听器只创建一次。
 if (!copyOverlay) return;
 if (copyOverlay._canvasSetup) return;
 copyOverlay._canvasSetup = true;
@@ -17673,6 +17859,7 @@ copyCanvasResizeHandler = function() {
 if (_copyResizeTimer) clearTimeout(_copyResizeTimer);
 _copyResizeTimer = setTimeout(function() {
 if (!copyOverlay) return;
+// 改 canvas 尺寸会清空位图；调整前暂存像素，尽可能保留用户尚未写完的笔迹。
 var imgData = null;
 try { imgData = copyCtx.getImageData(0, 0, canvas.width, canvas.height); } catch(e) {}
 canvas.width = window.innerWidth;
@@ -17690,6 +17877,7 @@ window.addEventListener('resize', copyCanvasResizeHandler);
 }
 
 function showCopyComplete(isDesktop, copyCtx, canvas, wordHint, meaningHint) {
+// 两种输入模式共享完成语义，但按各自最自然的方式提供“再来一次”。
 if (!copyOverlay) return;
 copyOverlay._completed = true;
 var box = document.createElement('div');
@@ -17728,6 +17916,7 @@ copyOverlay.appendChild(box);
 }
 
 function endCopy() {
+// 显式移除窗口和 Canvas 监听，避免多次进入练习后事件成倍触发。
 if (copyOrientationHandler) {
 window.removeEventListener('resize', copyOrientationHandler);
 window.removeEventListener('orientationchange', copyOrientationHandler);
@@ -17758,6 +17947,10 @@ copyDrawing = false;
 
 
 function initParaFlip(root) {
+/*
+ * Analysis 把原 essay-block 增强为前后两面：正面保留整篇文章，背面只渲染
+ * 用户所选段落。返回时保存段落和按钮引用，以恢复滚动位置及键盘焦点。
+ */
 (root || document).querySelectorAll('.essay-block').forEach(function(block){
 if (block.querySelector('.essay-inner')) return;
 var inner = document.createElement('div');
@@ -17851,6 +18044,7 @@ backEl.removeChild(backEl.lastChild);
 
 var srcDiv = document.createElement('div');
 srcDiv.className = 'analysis-src';
+// 从结构化 segments 重建原文，避免把正面按钮文字或朗读 token 混进解析标题。
 if (paragraphData && paragraphData.segments) {
 paragraphData.segments.forEach(function(segment){
 if (typeof segment === 'string') {
@@ -17882,6 +18076,10 @@ data.points.forEach(function(pt){
 var li = document.createElement('li');
 var temp = document.createElement('div');
 temp.textContent = pt;
+/*
+ * 先把整条说明转义，再只恢复精确的 <span class="keyword"> 白名单。
+ * 数据可保留重点标记，同时不会开放任意 HTML 注入能力。
+ */
 var safe = temp.innerHTML
 .replace(/&lt;span class="keyword"&gt;/g, '<span class="keyword">')
 .replace(/&lt;\/span&gt;/g, '</span>');
@@ -17898,6 +18096,10 @@ backEl.appendChild(loading);
 }
 
 function initFlipCards(root) {
+/*
+ * Cards 把 Renderer 的三段静态文字改造成可访问的 3D 双面卡。
+ * clone 后清空原节点，确保视觉前后面各自独立且重复初始化不会再次嵌套。
+ */
 (root || document).querySelectorAll('.vocab-card').forEach(function(card){
 if (card.querySelector('.card-inner')) return;
 var vw = card.querySelector('.vw');
@@ -17927,6 +18129,7 @@ card.setAttribute('tabindex', '0');
 card.setAttribute('aria-pressed', 'false');
 card.setAttribute('aria-label', vw.textContent.trim() + '，单词卡片，按回车或空格键翻转');
 function toggleCard() {
+// 每次人为翻面都算一次接触；批量显示模式只改 DOM，不污染个人学习记录。
 card.classList.toggle('flipped');
 card.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
 if (card.dataset.vocabId) {
@@ -17948,6 +18151,10 @@ toggleCard();
 }
 
 function initFlipToggles(root) {
+/*
+ * “英文 / 自定义 / 释义”是专栏级显示策略：
+ * 英文和释义统一全部卡面；自定义保留每张卡现状，便于逐词自测。
+ */
 (root || document).querySelectorAll('.column-section').forEach(function(section){
 var head = section.querySelector('.section-head');
 if (!head) return;
@@ -18019,6 +18226,10 @@ head.appendChild(copyBtn);
 }
 
 function init() {
+/*
+ * App 是唯一启动入口：先渲染，再根据 URL hash 激活正确词集并初始化该词集功能，
+ * 最后恢复星标与异步学习档案。hashchange 复用同一路径以支持深链接和浏览器历史。
+ */
 WordTales.Renderer.render();
 document.querySelectorAll('.set-btn').forEach(function(btn){
 btn.addEventListener('click', function(){ WordTales.Navigation.switchSet(btn.dataset.set, btn); });
@@ -18035,6 +18246,7 @@ var changelogBtn = document.querySelector('.set-btn[data-set="changelog"]');
 WordTales.Navigation.switchSet('changelog', changelogBtn);
 return;
 }
+// hash 可以指向词集或专栏；先反查所属词集，切换后再滚动到具体专栏。
 var targetSet = null;
 WordTales.Data.sets.some(function(set){
 var containsTarget = set.id === targetId || set.columns.some(function(column){ return column.id === targetId; });
@@ -18065,11 +18277,16 @@ return typeof sectionOrId === 'string' ? document.getElementById(sectionOrId) : 
 }
 
 function stopReading() {
+// 对外 API 不暴露内部播放类型，调用方只需请求“停止当前朗读”。
 if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
 if (currentBlock) unwrapWords(currentBlock);
 resetReadButtons();
 }
 
+/*
+ * 公共表面刻意保持很小：外部代码只能调用稳定入口，临时 DOM、计时器和
+ * 动画状态都留在闭包内，减少单文件全局命名冲突。
+ */
 return {
 Navigation: { switchSet: switchSet },
 Reader: { init: initReadAloud, toggle: toggleRead, stop: stopReading, speakWord: speakWord },

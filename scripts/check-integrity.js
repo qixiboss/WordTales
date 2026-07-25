@@ -4,10 +4,18 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
+/*
+ * 静态完整性检查器
+ *
+ * 设计意图：WordTales 没有构建系统，内容数据又直接内嵌在 HTML 中，因此把最容易
+ * 造成“页面能打开但部分功能失效”的约束集中到一个零依赖脚本里。脚本只读取文件，
+ * 不修复数据，适合在提交前和 GitHub Pages 发布前重复执行。
+ */
 const htmlPath = path.resolve(__dirname, '../vocab-essays/vocab-essays.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const errors = [];
 
+// 先让 V8 编译每段内联脚本；这一步只检查语法，不执行浏览器代码或触碰用户数据。
 const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
 scripts.forEach((match, index) => {
   try {
@@ -31,6 +39,10 @@ if (markerIndex !== -1) {
   let escaped = false;
   let dataEnd = -1;
 
+  /*
+   * sets 是合法 JSON，但外围文件是 JavaScript，不能直接 require。这里用括号深度
+   * 找数组末尾，并显式跳过字符串中的方括号和转义引号，避免被文章正文误导。
+   */
   for (let index = dataStart; index < html.length; index += 1) {
     const character = html[index];
     if (inString) {
@@ -61,6 +73,7 @@ if (markerIndex !== -1) {
 const ids = new Map();
 const totals = { sets: sets.length, columns: 0, words: 0, paragraphs: 0, audioColumns: 0 };
 
+// 所有实体共用一个 ID 空间，因为渲染后的 DOM 和查询索引也依赖全局唯一性。
 function registerId(id, type) {
   if (typeof id !== 'string' || !id.trim()) {
     errors.push(`${type} is missing a valid id.`);
@@ -98,6 +111,10 @@ sets.forEach((set, setIndex) => {
         }
       }
 
+      /*
+       * Reader 会按完全相同的空白规则把文章拆成 token。检查器复刻这条规则，
+       * 确保第 n 个 cue 始终对应页面上第 n 个可高亮 token。
+       */
       const articleTokens = paragraphs.flatMap((paragraph) => {
         if (!Array.isArray(paragraph.segments)) return [];
         return paragraph.segments.flatMap((segment) => {
@@ -115,6 +132,7 @@ sets.forEach((set, setIndex) => {
       } else {
         let previousEnd = -Infinity;
         cues.forEach((cue, cueIndex) => {
+          // null 表示录音中没有读出的标点或词，仍占一个 token 位置以保持对齐。
           if (cue === null) return;
           const validCue = Array.isArray(cue) && cue.length === 2 &&
             cue.every(Number.isFinite) && cue[0] >= 0 && cue[1] > cue[0];
@@ -147,6 +165,7 @@ sets.forEach((set, setIndex) => {
       if (!Array.isArray(paragraph.segments)) {
         errors.push(`Paragraph "${paragraph.id}" has no segments array.`);
       } else {
+        // 段落只能高亮本专栏词汇，防止同名词跨专栏串到错误词卡。
         paragraph.segments.forEach((segment) => {
           if (segment && typeof segment === 'object' && !localWordIds.has(segment.vocabId)) {
             errors.push(`Paragraph "${paragraph.id}" references non-local word "${segment.vocabId}".`);
@@ -161,6 +180,7 @@ sets.forEach((set, setIndex) => {
   });
 });
 
+// 汇总全部错误后一次性退出，维护者不必反复修一个、跑一次。
 if (errors.length) {
   console.error(`Integrity check failed with ${errors.length} error(s):`);
   errors.forEach((error) => console.error(`- ${error}`));

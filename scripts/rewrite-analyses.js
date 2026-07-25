@@ -3,6 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 
+/*
+ * 段落解析批量重写器
+ *
+ * 设计意图：把旧解析统一成“段落脉络 → 分类语法点 → 语境搭配”的学习结构。
+ * 它会原地改写 HTML 中的 sets 数据，因此应先由版本控制保护现场，并在执行后运行
+ * check-integrity.js。所有变换都以现有内容为输入，不调用网络或生成式服务。
+ */
 const htmlPath = path.resolve(__dirname, '../vocab-essays/vocab-essays.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const marker = '  var sets = ';
@@ -18,6 +25,7 @@ let inString = false;
 let escaped = false;
 let dataEnd = -1;
 
+// 与完整性检查器保持同一套括号扫描规则，避免字符串内的 “]” 截断 JSON。
 for (let index = dataStart; index < html.length; index += 1) {
   const character = html[index];
   if (inString) {
@@ -41,10 +49,15 @@ if (dataEnd === -1) {
 const sets = JSON.parse(html.slice(dataStart, dataEnd));
 
 function plainText(value) {
+  // 分类规则只关心读者看到的文字，先移除允许存在的 keyword 标记。
   return value.replace(/<[^>]+>/g, '');
 }
 
 function normalizeChinesePunctuation(value) {
+  /*
+   * 只处理标签外文本：如果直接全局替换，引号或空格规则可能破坏
+   * <span class="keyword">，从而让 Analysis 模块的白名单渲染失效。
+   */
   return value.split(/(<[^>]+>)/g).map((part) => {
     if (part.startsWith('<')) return part.replace(/class=[“”"]keyword[“”"]/g, 'class="keyword"');
     const straightQuotes = part.replace(/[“”]/g, '"');
@@ -58,6 +71,7 @@ function normalizeChinesePunctuation(value) {
 }
 
 function clip(value, maxLength = 25) {
+  // 路线图只保留可辨识的短片段，避免摘要本身比原段落还难扫读。
   const cleaned = value
     .replace(/[“”"']/g, '')
     .replace(/^[然而但而于是随后接着因此与此同时]+[，、]?/, '')
@@ -72,6 +86,7 @@ function makeRoadmap(translation, source) {
     .filter(Boolean)
     .map((sentence) => sentence.split(/[；;]/)[0].trim())
     .filter(Boolean);
+  // 长段落取“开头 / 中点 / 结尾”，用最少节点保留叙事方向。
   const selected = beats.length <= 3
     ? beats
     : [beats[0], beats[Math.floor(beats.length / 2)], beats[beats.length - 1]];
@@ -87,6 +102,10 @@ function makeRoadmap(translation, source) {
 }
 
 function classifyPoint(point, index) {
+  /*
+   * 分类顺序体现优先级：主干最先，其次排除纯词义说明，再识别篇章逻辑和句法。
+   * 同一条可能命中多个关键词，因此不能把这些判断随意改成互不相关的独立规则。
+   */
   const text = plainText(point);
   if (index === 0 || /主干|主系表|主谓/.test(text)) return '句子骨架';
   if (/意为|表示|固定搭配|搭配|用作|在此(?:处)?(?:指|作|表示)|词义/.test(text) &&
@@ -98,6 +117,7 @@ function classifyPoint(point, index) {
 }
 
 function explanationFor(point) {
+  // 为难点补“怎么读”的迁移提示，而不是重复语法名称。
   const text = plainText(point);
   if (/定语从句|后置定语/.test(text)) {
     return '阅读时先确认它修饰的对象，再暂时略过修饰部分，句子主干就会立刻显出来。';
@@ -134,6 +154,7 @@ function rewritePoint(point, index, explanationsUsed) {
   let explanation = '';
   if (category === '结构拆解' || category === '逻辑衔接') {
     explanation = explanationFor(rewritten);
+    // 同段落不重复同一学习提示，控制解析页的信息密度。
     if (explanation && explanationsUsed.has(explanation)) explanation = '';
     if (explanation) explanationsUsed.add(explanation);
   }
@@ -142,6 +163,7 @@ function rewritePoint(point, index, explanationsUsed) {
 }
 
 function sourceText(paragraph) {
+  // 数据片段既有普通字符串也有高亮词对象，这里还原读者看到的连续原文。
   return paragraph.segments
     .map((segment) => typeof segment === 'string' ? segment : segment.text)
     .join('')
@@ -150,6 +172,7 @@ function sourceText(paragraph) {
 }
 
 function phraseAround(source, word) {
+  // 取目标词前后少量词形成可背诵词块；转义后再建正则以兼容特殊字符。
   const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = source.match(new RegExp(`(?:[A-Za-z'-]+\\s+){0,2}${escapedWord}(?:\\s+[A-Za-z'-]+){0,3}`, 'i'));
   return match ? match[0].trim() : word;
@@ -167,6 +190,7 @@ function makeContextPoint(paragraph, vocabularyById, rewrittenPoints) {
       return `${segment.text} 出现在“${phraseAround(source, segment.text)}”中${meaning ? `，本段取“${meaning}”义` : ''}`;
     });
   if (!examples.length) {
+    // 无词卡引用的段落退而使用现有解析里的英文词块，保证结构仍完整。
     const phrases = [];
     const seenPhrases = new Set();
     for (const point of rewrittenPoints) {
@@ -195,6 +219,10 @@ for (const set of sets) {
       analysis.translation = normalizeChinesePunctuation(analysis.translation);
       let originalPoints = analysis.points;
       if (plainText(originalPoints[0] || '').startsWith('段落脉络：')) {
+        /*
+         * 支持重复运行：先剥离上次生成的首尾项和固定提示，再从“原始语法点”
+         * 重建结构，避免每执行一次就多嵌套一层分类标签。
+         */
         originalPoints = originalPoints.slice(1, -1).map((point) => {
           let restored = point.replace(/^<span class="keyword">(?:句子骨架|地道表达|逻辑衔接|结构拆解|语境辨析)<\/span>：/, '');
           for (const explanation of [
@@ -224,6 +252,7 @@ for (const set of sets) {
 }
 
 const rewrittenData = JSON.stringify(sets, null, 2);
+// 只替换数据数组的字节区间，保留 HTML、CSS 和交互代码的原有格式。
 const output = html.slice(0, dataStart) + rewrittenData + html.slice(dataEnd);
 fs.writeFileSync(htmlPath, output);
 
