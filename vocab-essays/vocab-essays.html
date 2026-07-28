@@ -1672,6 +1672,7 @@ display:none}
     <div class="cv-desc"><strong>游戏分类支持随时改判。</strong>已放入「比较认识」或「不太认识」框的单词卡可以再次拖到另一侧，误操作后无需退出重来。</div>
     <ul>
       <li>支持将「比较认识」框中的单词拖到「不太认识」框，也支持反向拖动</li>
+      <li>框内卡片只有在明显拖动后才会离开原位，普通点击仍用于翻面查看释义</li>
       <li>改判后同步更新五角星、复习计划和主页面词卡状态</li>
       <li>改判不会重复增加游戏已收集数量，并支持左右方向键重新分类</li>
     </ul>
@@ -17292,6 +17293,7 @@ var isDragging = false;
 var startX, startY, offsetX, offsetY;
 var originDz = null;
 var dragMoved = false;
+var DRAG_THRESHOLD = 8;
 
 function getPos(e) {
 if (e.touches && e.touches.length > 0) {
@@ -17303,8 +17305,6 @@ return {x: e.clientX, y: e.clientY};
 function onStart(e) {
 isDragging = true;
 dragMoved = false;
-card.classList.add('dragging');
-card.classList.remove('floating');
 var rect = card.getBoundingClientRect();
 var pos = getPos(e);
 startX = pos.x;
@@ -17314,28 +17314,39 @@ offsetY = rect.top;
 originDz = card.parentElement && card.parentElement.classList.contains('game-dropzone')
 ? card.parentElement
 : null;
-if (originDz) {
-// 已分类卡先提升回覆盖层，保持屏幕坐标不跳动，松手后再落入目标框。
-releaseDropzoneCard(card, originDz);
-gameOverlay.appendChild(card);
-card.style.position = 'absolute';
-card.style.transform = 'translate3d(' + offsetX + 'px,' + offsetY + 'px,0)';
-}
 document.addEventListener('mousemove', onMove);
 document.addEventListener('mouseup', onEnd);
 document.addEventListener('touchmove', onMove, {passive: false});
 document.addEventListener('touchend', onEnd);
-e.preventDefault();
 }
 
 function onMove(e) {
 if (!isDragging) return;
 var pos = getPos(e);
-var newX = offsetX + (pos.x - startX);
-var newY = offsetY + (pos.y - startY);
-if (Math.abs(pos.x - startX) > 4 || Math.abs(pos.y - startY) > 4) {
-dragMoved = true;
+var deltaX = pos.x - startX;
+var deltaY = pos.y - startY;
+if (!dragMoved && Math.sqrt(deltaX * deltaX + deltaY * deltaY) < DRAG_THRESHOLD) {
+return;
 }
+if (!dragMoved) {
+dragMoved = true;
+/*
+ * 只有越过阈值才真正提起卡片。这样按下、轻微手抖再松开仍是一次点击，
+ * 不会让框内卡片短暂消失或误触发重新分类。
+ */
+var currentRect = card.getBoundingClientRect();
+offsetX = currentRect.left - deltaX;
+offsetY = currentRect.top - deltaY;
+card.classList.add('dragging');
+card.classList.remove('floating');
+if (originDz) {
+releaseDropzoneCard(card, originDz);
+gameOverlay.appendChild(card);
+card.style.position = 'absolute';
+}
+}
+var newX = offsetX + deltaX;
+var newY = offsetY + deltaY;
 card.style.transform = 'translate3d(' + newX + 'px,' + newY + 'px,0)';
 if (card.floatState) {
 card.floatState.x = newX;
@@ -17352,6 +17363,11 @@ document.removeEventListener('mousemove', onMove);
 document.removeEventListener('mouseup', onEnd);
 document.removeEventListener('touchmove', onMove);
 document.removeEventListener('touchend', onEnd);
+if (!dragMoved) {
+// 保留原 DOM 位置，让随后产生的 click 事件负责翻面。
+originDz = null;
+return;
+}
 var cardRect = card.getBoundingClientRect();
 var targetDz = null;
 // 松手时以矩形相交判定投放，不要求指针中心落在区域内，触屏更宽容。
