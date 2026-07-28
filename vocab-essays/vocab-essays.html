@@ -528,9 +528,9 @@ z-index:500;
 box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .game-card.dropped {
 position:relative;
-cursor:pointer;
+cursor:grab;
 transition:transform .2s}
-.game-card.dropped:hover {
+.game-card.dropped:not(.dragging):hover {
 transform:scale(1.05)}
 .game-card .card-inner {
 position:relative;
@@ -1664,6 +1664,17 @@ display:none}
   <div class="changelog-head">
     <h2>第八份：更新日志</h2>
     <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v2.2 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-07-28</div>
+    <div class="cv-desc"><strong>游戏分类支持随时改判。</strong>已放入「比较认识」或「不太认识」框的单词卡可以再次拖到另一侧，误操作后无需退出重来。</div>
+    <ul>
+      <li>支持将「比较认识」框中的单词拖到「不太认识」框，也支持反向拖动</li>
+      <li>改判后同步更新五角星、复习计划和主页面词卡状态</li>
+      <li>改判不会重复增加游戏已收集数量，并支持左右方向键重新分类</li>
+    </ul>
   </div>
 
   <div class="changelog-version">
@@ -17192,7 +17203,7 @@ gameCards.push(gameCard);
 
 makeFloatable(gameCard);
 gameCard.addEventListener('keydown', function(e){
-if (!gameCard.classList.contains('dropped') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
 e.preventDefault();
 dropCard(gameCard, e.key === 'ArrowLeft' ? dzFamiliar : dzUnfamiliar);
 } else if (gameCard.classList.contains('dropped') && (e.key === 'Enter' || e.key === ' ')) {
@@ -17279,6 +17290,8 @@ function makeFloatable(card) {
 // 指针事件生命周期绑在 document 上，拖出卡片边界后仍能收到 move/end。
 var isDragging = false;
 var startX, startY, offsetX, offsetY;
+var originDz = null;
+var dragMoved = false;
 
 function getPos(e) {
 if (e.touches && e.touches.length > 0) {
@@ -17288,8 +17301,8 @@ return {x: e.clientX, y: e.clientY};
 }
 
 function onStart(e) {
-if (card.classList.contains('dropped')) return;
 isDragging = true;
+dragMoved = false;
 card.classList.add('dragging');
 card.classList.remove('floating');
 var rect = card.getBoundingClientRect();
@@ -17298,6 +17311,16 @@ startX = pos.x;
 startY = pos.y;
 offsetX = rect.left;
 offsetY = rect.top;
+originDz = card.parentElement && card.parentElement.classList.contains('game-dropzone')
+? card.parentElement
+: null;
+if (originDz) {
+// 已分类卡先提升回覆盖层，保持屏幕坐标不跳动，松手后再落入目标框。
+releaseDropzoneCard(card, originDz);
+gameOverlay.appendChild(card);
+card.style.position = 'absolute';
+card.style.transform = 'translate3d(' + offsetX + 'px,' + offsetY + 'px,0)';
+}
 document.addEventListener('mousemove', onMove);
 document.addEventListener('mouseup', onEnd);
 document.addEventListener('touchmove', onMove, {passive: false});
@@ -17310,6 +17333,9 @@ if (!isDragging) return;
 var pos = getPos(e);
 var newX = offsetX + (pos.x - startX);
 var newY = offsetY + (pos.y - startY);
+if (Math.abs(pos.x - startX) > 4 || Math.abs(pos.y - startY) > 4) {
+dragMoved = true;
+}
 card.style.transform = 'translate3d(' + newX + 'px,' + newY + 'px,0)';
 if (card.floatState) {
 card.floatState.x = newX;
@@ -17337,7 +17363,10 @@ targetDz = dz;
 }
 });
 if (targetDz) {
-dropCard(card, targetDz);
+dropCard(card, targetDz, originDz);
+} else if (originDz) {
+// 从分类框拖出但没有命中另一框时回到原处，避免一次失手让卡片重新漂走。
+dropCard(card, originDz, originDz);
 } else {
 card.classList.add('floating');
 if (!card.floatState) {
@@ -17353,6 +17382,8 @@ floatCards.push(card);
 }
 if (!floatReq) startFloatLoop();
 }
+card._suppressFlipUntil = dragMoved ? Date.now() + 500 : 0;
+originDz = null;
 }
 
 card.addEventListener('mousedown', onStart);
@@ -17366,13 +17397,36 @@ document.removeEventListener('touchend', onEnd);
 };
 }
 
-function dropCard(card, targetDz) {
+function releaseDropzoneCard(card, dropzone) {
+var parentDz = dropzone || card.parentElement;
+if (!parentDz || !parentDz.classList.contains('game-dropzone')) return;
+if (parentDz.currentCard === card) {
+parentDz.currentCard = null;
+}
+if (card.parentElement === parentDz) card.remove();
+if (!parentDz.querySelector('.game-card')) {
+parentDz.classList.add('empty');
+}
+}
+
+function dropCard(card, targetDz, sourceDz) {
 /*
  * 每个投放区只展示最近一张卡；旧卡移除但其学习结果已持久化。
- * “不太认识”同步加星并缩短复习，“比较认识”则移除星标并延长间隔。
+ * 已投放卡可以跨框改判；同框放回不重复记学习事件，也不增加收集计数。
  */
+var previousClassification = card.dataset.classification || '';
+var nextClassification = targetDz.classList.contains('unfamiliar') ? 'unfamiliar' : 'familiar';
+var currentParent = card.parentElement && card.parentElement.classList.contains('game-dropzone')
+? card.parentElement
+: null;
 if (targetDz.currentCard && targetDz.currentCard !== card) {
 removeDroppedCard(targetDz.currentCard);
+}
+if (currentParent && currentParent !== targetDz) {
+releaseDropzoneCard(card, currentParent);
+}
+if (sourceDz && sourceDz !== targetDz && sourceDz.currentCard === card) {
+releaseDropzoneCard(card, sourceDz);
 }
 card.classList.remove('floating');
 card.classList.add('dropped');
@@ -17385,12 +17439,22 @@ var idx = floatCards.indexOf(card);
 if (idx >= 0) floatCards.splice(idx, 1);
 
 var word = card.dataset.word || '';
-var isUnfamiliar = targetDz.classList.contains('unfamiliar');
-if (card.dataset.vocabId) {
-WordTales.LearningProgress.trackWord(card.dataset.vocabId, isUnfamiliar ? 'unknown' : 'known', {
+var isUnfamiliar = nextClassification === 'unfamiliar';
+if (card.dataset.vocabId && previousClassification !== nextClassification) {
+var trackMeta = {
 columnId: _gameSection ? _gameSection.id : ''
-});
+};
+if (previousClassification) {
+trackMeta.reclassifiedFrom = previousClassification === 'unfamiliar' ? 'unknown' : 'known';
 }
+WordTales.LearningProgress.trackWord(card.dataset.vocabId, isUnfamiliar ? 'unknown' : 'known', trackMeta);
+}
+card.dataset.classification = nextClassification;
+card.setAttribute(
+'aria-label',
+word + '，当前为' + (isUnfamiliar ? '不太认识' : '比较认识') +
+'；可拖到另一个框重新分类，按左方向键标记为比较认识，按右方向键标记为不太认识，按回车翻面'
+);
 if (isUnfamiliar) {
 toggleStarWord(word, true);
 var existingStar = card.querySelector('.game-star');
@@ -17412,12 +17476,18 @@ card.removeEventListener('click', card._dropClickHandler);
 }
 var handler = function(e){
 e.stopPropagation();
+if (card._suppressFlipUntil && Date.now() <= card._suppressFlipUntil) {
+card._suppressFlipUntil = 0;
+return;
+}
 card.classList.toggle('flipped');
 card.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
 };
 card._dropClickHandler = handler;
 card.addEventListener('click', handler);
+if (!previousClassification) {
 gameDroppedCount++;
+}
 var progress = gameOverlay.querySelector('.game-progress');
 if (progress) progress.textContent = '已收集 ' + gameDroppedCount + ' / ' + gameCards.length;
 }
