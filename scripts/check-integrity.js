@@ -7,26 +7,65 @@ const vm = require('vm');
 /*
  * 静态完整性检查器
  *
- * 设计意图：WordTales 没有构建系统，内容数据又直接内嵌在 HTML 中，因此把最容易
- * 造成“页面能打开但部分功能失效”的约束集中到一个零依赖脚本里。脚本只读取文件，
- * 不修复数据，适合在提交前和 GitHub Pages 发布前重复执行。
+ * 设计意图：WordTales 没有构建系统，因此把最容易造成“页面能打开但部分功能失效”
+ * 的约束集中到一个零依赖脚本里。脚本只读取文件，不修复数据，适合在提交前和
+ * GitHub Pages 发布前重复执行。
  */
 const htmlPath = path.resolve(__dirname, '../vocab-essays/vocab-essays.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const errors = [];
 
-// 先让 V8 编译每段内联脚本；这一步只检查语法，不执行浏览器代码或触碰用户数据。
-const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
-scripts.forEach((match, index) => {
-  try {
-    new vm.Script(match[1], { filename: `inline-script-${index + 1}.js` });
-  } catch (error) {
-    errors.push(`inline script ${index + 1}: ${error.message}`);
+const expectedScripts = [
+  'js/namespace.js',
+  'js/data.js',
+  'js/renderer.js',
+  'js/learning-progress.js',
+  'js/features.js'
+];
+const scriptTags = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+const scripts = scriptTags.map((match) => {
+  const sourceMatch = match[1].match(/\bsrc=["']([^"']+)["']/i);
+  return { source: sourceMatch ? sourceMatch[1] : '' };
+});
+
+if (scripts.some((script) => !script.source)) {
+  errors.push('All application scripts must be external static files.');
+}
+if (scripts.map((script) => script.source).join('\n') !== expectedScripts.join('\n')) {
+  errors.push(`Unexpected script order: ${scripts.map((script) => script.source || '[inline]').join(', ')}.`);
+}
+
+function localAssetPath(reference) {
+  if (!reference || /^(?:[a-z]+:|\/\/|#)/i.test(reference)) return null;
+  return path.resolve(path.dirname(htmlPath), reference.split(/[?#]/)[0]);
+}
+
+// 检查 HTML 引用的本地样式与脚本是否存在，并让 V8 编译每个外部脚本。
+const assetReferences = [
+  ...[...html.matchAll(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)].map((match) => match[1]),
+  ...scripts.map((script) => script.source)
+];
+assetReferences.forEach((reference) => {
+  const assetPath = localAssetPath(reference);
+  if (assetPath && (!fs.existsSync(assetPath) || !fs.statSync(assetPath).isFile())) {
+    errors.push(`Referenced static asset is missing: ${reference}`);
   }
 });
 
+scripts.forEach((script, index) => {
+  const scriptPath = localAssetPath(script.source);
+  if (!scriptPath || !fs.existsSync(scriptPath)) return;
+  try {
+    new vm.Script(fs.readFileSync(scriptPath, 'utf8'), { filename: script.source });
+  } catch (error) {
+    errors.push(`${script.source || `script ${index + 1}`}: ${error.message}`);
+  }
+});
+
+const dataPath = path.resolve(path.dirname(htmlPath), 'js/data.js');
+const dataSource = fs.existsSync(dataPath) ? fs.readFileSync(dataPath, 'utf8') : '';
 const marker = '  var sets = ';
-const markerIndex = html.indexOf(marker);
+const markerIndex = dataSource.indexOf(marker);
 if (markerIndex === -1) {
   errors.push('Unable to locate the sets data.');
 }
@@ -43,8 +82,8 @@ if (markerIndex !== -1) {
    * sets 是合法 JSON，但外围文件是 JavaScript，不能直接 require。这里用括号深度
    * 找数组末尾，并显式跳过字符串中的方括号和转义引号，避免被文章正文误导。
    */
-  for (let index = dataStart; index < html.length; index += 1) {
-    const character = html[index];
+  for (let index = dataStart; index < dataSource.length; index += 1) {
+    const character = dataSource[index];
     if (inString) {
       if (escaped) escaped = false;
       else if (character === '\\') escaped = true;
@@ -63,7 +102,7 @@ if (markerIndex !== -1) {
     errors.push('Unable to find the end of the sets data.');
   } else {
     try {
-      sets = JSON.parse(html.slice(dataStart, dataEnd));
+      sets = JSON.parse(dataSource.slice(dataStart, dataEnd));
     } catch (error) {
       errors.push(`Invalid sets JSON: ${error.message}`);
     }

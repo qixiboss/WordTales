@@ -13,7 +13,8 @@
 
 ## Project contracts
 
-- Page and data: `vocab-essays/vocab-essays.html`
+- Page shell: `vocab-essays/vocab-essays.html`
+- Article data and cue timelines: `vocab-essays/js/data.js`
 - Audio directory: `vocab-essays/audio/`
 - Audio names: `list{setNumber}_col{columnNumber}.mp3`
 - Deployment: `.github/workflows/jekyll-gh-pages.yml`
@@ -139,6 +140,8 @@ Reproduce the GitHub Pages copy step in a temporary directory and confirm all MP
 build_dir=$(mktemp -d /tmp/wordtales-pages.XXXXXX)
 mkdir -p "$build_dir/_site"
 cp vocab-essays/vocab-essays.html "$build_dir/_site/index.html"
+cp -R vocab-essays/css "$build_dir/_site/css"
+cp -R vocab-essays/js "$build_dir/_site/js"
 cp -R vocab-essays/audio "$build_dir/_site/audio"
 cp README.md "$build_dir/_site/README.md"
 find "$build_dir/_site/audio" -type f -name "*.mp3" | wc -l

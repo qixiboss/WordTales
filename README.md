@@ -2,7 +2,7 @@
 
 一个将英语词汇放回语境中学习的单页应用。项目收录 **7 份词集、28 个主题专栏、897 个词汇和 132 个短文段落**，并把词卡、主题阅读、语音朗读、逐段解析和复习练习整合在同一个页面中。
 
-应用主体仍是一个 HTML 文件，并附带少量 MP3 朗读资源；无构建步骤、无第三方运行时依赖，可离线打开，也可直接部署为静态站点。
+应用由一个 HTML 页面壳、独立 CSS、按职责拆分的原生 JavaScript 和 MP3 朗读资源组成；无构建步骤、无第三方运行时依赖，可离线打开，也可直接部署为静态站点。
 
 ## 功能
 
@@ -21,7 +21,7 @@
 
 ## 快速开始
 
-直接下载并用浏览器打开：
+下载后保留 `vocab-essays` 目录结构，并用浏览器打开：
 
 ```text
 vocab-essays/vocab-essays.html
@@ -69,14 +69,21 @@ http://localhost:8000/vocab-essays/vocab-essays.html
 ├── .github/workflows/jekyll-gh-pages.yml  # GitHub Pages 发布流程
 ├── vocab-essays/
 │   ├── audio/                             # 预生成全文朗读 MP3
-│   └── vocab-essays.html                  # 样式、数据、时间轴、渲染器与全部交互
+│   ├── css/styles.css                     # 页面样式与响应式规则
+│   ├── js/
+│   │   ├── namespace.js                   # 全局命名空间初始化
+│   │   ├── data.js                        # 词集、解析与逐词时间轴
+│   │   ├── renderer.js                    # 数据到初始 DOM
+│   │   ├── learning-progress.js           # 学习档案与复习调度
+│   │   └── features.js                    # 阅读、词卡、游戏等交互
+│   └── vocab-essays.html                  # 页面结构、更新日志与资源入口
 ├── LICENSE
 └── README.md
 ```
 
 ## 代码架构
 
-`vocab-essays.html` 包含全部页面逻辑和逐词时间轴，JavaScript 按职责挂载在全局命名空间 `WordTales` 下：
+`vocab-essays.html` 以有序的经典脚本加载 `js/` 中的模块；全部模块仍按职责挂载在全局命名空间 `WordTales` 下，因此无需构建工具并兼容 `file://` 直开：
 
 ```text
 结构化词集数据
@@ -165,7 +172,7 @@ DOMContentLoaded
 
 ## 数据模型与扩展
 
-内容位于 `WordTales.Data` 的 `sets` 数组中，层级为 `set → column → words / paragraphs`。一个精简示例如下：
+内容位于 `vocab-essays/js/data.js` 内 `WordTales.Data` 的 `sets` 数组中，层级为 `set → column → words / paragraphs`。一个精简示例如下：
 
 ```js
 {
@@ -238,7 +245,7 @@ WordTales.Data.getColumn(columnId);
 node scripts/check-integrity.js
 ```
 
-该脚本会检查内联 JavaScript 语法、数据 JSON、重复 ID、必填词汇字段、段落词汇引用、录音文件及逐词 cue 的数量和顺序。通过后仍应手动检查：词集切换、词卡翻面、段落解析、录音与系统语音启停、游戏拖放、刷新后的加星恢复，以及桌面端和移动端抄写模式。
+该脚本会检查外部静态资源、JavaScript 语法、数据 JSON、重复 ID、必填词汇字段、段落词汇引用、录音文件及逐词 cue 的数量和顺序。通过后仍应手动检查：词集切换、词卡翻面、段落解析、录音与系统语音启停、游戏拖放、刷新后的加星恢复，以及桌面端和移动端抄写模式。
 
 ## 部署
 
@@ -248,7 +255,7 @@ node scripts/check-integrity.js
 
 1. 检出仓库并配置 GitHub Pages。
 2. 将 `vocab-essays/vocab-essays.html` 复制为 `_site/index.html`。
-3. 将 `vocab-essays/audio` 和 `README.md` 一并放入发布产物。
+3. 将 `vocab-essays/css`、`vocab-essays/js`、`vocab-essays/audio` 和 `README.md` 一并放入发布产物。
 4. 上传静态站点并部署到 GitHub Pages。
 
 首次部署时，在仓库 **Settings → Pages → Build and deployment** 中将 **Source** 设为 **GitHub Actions**。此项目不经过 Jekyll 构建。

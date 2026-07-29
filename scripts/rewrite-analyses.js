@@ -7,13 +7,13 @@ const path = require('path');
  * 段落解析批量重写器
  *
  * 设计意图：把旧解析统一成“段落脉络 → 分类语法点 → 语境搭配”的学习结构。
- * 它会原地改写 HTML 中的 sets 数据，因此应先由版本控制保护现场，并在执行后运行
+ * 它会原地改写数据脚本中的 sets 数组，因此应先由版本控制保护现场，并在执行后运行
  * check-integrity.js。所有变换都以现有内容为输入，不调用网络或生成式服务。
  */
-const htmlPath = path.resolve(__dirname, '../vocab-essays/vocab-essays.html');
-const html = fs.readFileSync(htmlPath, 'utf8');
+const dataPath = path.resolve(__dirname, '../vocab-essays/js/data.js');
+const dataSource = fs.readFileSync(dataPath, 'utf8');
 const marker = '  var sets = ';
-const markerIndex = html.indexOf(marker);
+const markerIndex = dataSource.indexOf(marker);
 
 if (markerIndex === -1) {
   throw new Error('Unable to locate the sets data.');
@@ -26,8 +26,8 @@ let escaped = false;
 let dataEnd = -1;
 
 // 与完整性检查器保持同一套括号扫描规则，避免字符串内的 “]” 截断 JSON。
-for (let index = dataStart; index < html.length; index += 1) {
-  const character = html[index];
+for (let index = dataStart; index < dataSource.length; index += 1) {
+  const character = dataSource[index];
   if (inString) {
     if (escaped) escaped = false;
     else if (character === '\\') escaped = true;
@@ -46,7 +46,7 @@ if (dataEnd === -1) {
   throw new Error('Unable to find the end of the sets data.');
 }
 
-const sets = JSON.parse(html.slice(dataStart, dataEnd));
+const sets = JSON.parse(dataSource.slice(dataStart, dataEnd));
 
 function plainText(value) {
   // 分类规则只关心读者看到的文字，先移除允许存在的 keyword 标记。
@@ -252,8 +252,8 @@ for (const set of sets) {
 }
 
 const rewrittenData = JSON.stringify(sets, null, 2);
-// 只替换数据数组的字节区间，保留 HTML、CSS 和交互代码的原有格式。
-const output = html.slice(0, dataStart) + rewrittenData + html.slice(dataEnd);
-fs.writeFileSync(htmlPath, output);
+// 只替换数据数组的字节区间，保留 Data 模块其余代码的原有格式。
+const output = dataSource.slice(0, dataStart) + rewrittenData + dataSource.slice(dataEnd);
+fs.writeFileSync(dataPath, output);
 
 console.log(`Rewrote analyses for ${paragraphCount} paragraphs.`);

@@ -26,6 +26,8 @@ jobs:
         run: |
           mkdir -p ./_site
           cp vocab-essays/vocab-essays.html ./_site/index.html
+          cp -R vocab-essays/css ./_site/css
+          cp -R vocab-essays/js ./_site/js
           cp -R vocab-essays/audio ./_site/audio
           cp README.md ./_site/README.md
       - name: Upload artifact
