@@ -421,20 +421,56 @@ loadVoices();
 };
 }
 
-function pickBestVoice(voices) {
+var ACCENT_KEY = 'wordtales.accent';
+
+function getAccent() {
+// 口音偏好只认 us/uk，其余取值一律按美音处理，避免坏数据破坏朗读。
+var value = null;
+try { value = localStorage.getItem(ACCENT_KEY); } catch (e) {}
+return value === 'uk' ? 'uk' : 'us';
+}
+
+function setAccent(accent) {
+accent = accent === 'uk' ? 'uk' : 'us';
+try { localStorage.setItem(ACCENT_KEY, accent); } catch (e) {}
+var container = document.querySelector('.study-accent');
+if (container) {
+container.querySelectorAll('.study-accent-opt').forEach(function(btn){
+var active = btn.dataset.accent === accent;
+btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+btn.classList.toggle('active', active);
+});
+}
+return accent;
+}
+
+function pickBestVoice(voices, accent) {
 /*
- * Web Speech 的 voice 名称依操作系统而异。优先表覆盖常见自然音色，
- * 再按 neural/premium、en-US、任意英文逐级降级，保证可用性优先。
+ * 先按口音过滤出 en-GB/en-US 语音池，再在池内按名称顺序表选自然音色，
+ * 最后逐级降级到 neural/premium、口音语音、任意英文。口音池为空时回退
+ * 到全部英文语音，保证任何平台都能出声。
  */
 if (!voices || voices.length === 0) voices = loadVoices();
 if (!voices || voices.length === 0) return null;
+if (accent !== 'uk' && accent !== 'us') accent = getAccent();
 
 var enVoices = voices.filter(function(v){
 return v.lang && v.lang.indexOf('en') === 0;
 });
 if (enVoices.length === 0) return null;
 
-var tiers = [
+var preferredLang = accent === 'uk' ? 'en-GB' : 'en-US';
+var pool = enVoices.filter(function(v){ return v.lang === preferredLang; });
+if (pool.length === 0) pool = enVoices;
+
+var tiers = accent === 'uk'
+? [
+['Google UK English Female', 'Google UK English Male'],
+['Microsoft Libby', 'Microsoft Sonia', 'Microsoft Ryan', 'Microsoft George'],
+['Daniel', 'Serena'],
+['Hazel']
+]
+: [
 ['Samantha'],
 ['Google US English', 'Google UK English Female', 'Google UK English Male'],
 ['Microsoft Aria', 'Microsoft Jenny', 'Microsoft Zira', 'Microsoft Guy', 'Microsoft Davis'],
@@ -444,22 +480,22 @@ var tiers = [
 
 for (var i = 0; i < tiers.length; i++) {
 for (var j = 0; j < tiers[i].length; j++) {
-var match = enVoices.find(function(v){
+var match = pool.find(function(v){
 return v.name.indexOf(tiers[i][j]) >= 0;
 });
 if (match) return match;
 }
 }
 
-var neuralMatch = enVoices.find(function(v){
+var neuralMatch = pool.find(function(v){
 return v.name.toLowerCase().indexOf('neural') >= 0 ||
 v.name.toLowerCase().indexOf('premium') >= 0 ||
 v.name.toLowerCase().indexOf('enhanced') >= 0;
 });
 if (neuralMatch) return neuralMatch;
 
-var usMatch = enVoices.find(function(v){ return v.lang === 'en-US'; });
-if (usMatch) return usMatch;
+var langMatch = enVoices.find(function(v){ return v.lang === preferredLang; });
+if (langMatch) return langMatch;
 
 return enVoices[0];
 }
@@ -503,7 +539,7 @@ statusLabel.textContent = '准备朗读…';
 progressBar.after(statusLabel);
 
 var voices = loadVoices();
-var bestVoice = pickBestVoice(voices);
+var bestVoice = pickBestVoice(voices, getAccent());
 
 if (!bestVoice) {
 btn.textContent = '朗读';
@@ -655,7 +691,7 @@ else punct = '.';
 var speakText = chunk.text + (punct ? punct : '');
 
 var utterance = new SpeechSynthesisUtterance(speakText);
-utterance.lang = 'en-US';
+utterance.lang = getAccent() === 'uk' ? 'en-GB' : 'en-US';
 utterance.rate = prosody.rate * _readRate;
 utterance.pitch = prosody.pitch;
 utterance.volume = 1.0;
@@ -987,11 +1023,12 @@ function speakWord(word) {
 if (typeof speechSynthesis === 'undefined') return;
 speechSynthesis.cancel();
 var utterance = new SpeechSynthesisUtterance(word);
-utterance.lang = 'en-US';
+var accent = getAccent();
+utterance.lang = accent === 'uk' ? 'en-GB' : 'en-US';
 utterance.rate = 0.9;
 utterance.pitch = 1.0;
 var voices = loadVoices();
-var bestVoice = pickBestVoice(voices);
+var bestVoice = pickBestVoice(voices, accent);
 if (bestVoice) utterance.voice = bestVoice;
 speechSynthesis.speak(utterance);
 }
@@ -2481,12 +2518,37 @@ head.appendChild(copyBtn);
 });
 }
 
+function initAccentControl() {
+// 在背书顶部栏注入美音/英音切换，幂等保护防止重复绑定。
+var container = document.querySelector('.study-top-actions');
+if (!container || container.querySelector('.study-accent')) return;
+var accent = getAccent();
+var group = document.createElement('div');
+group.className = 'study-accent';
+group.setAttribute('role', 'group');
+group.setAttribute('aria-label', '发音音色');
+[['us', '美音'], ['uk', '英音']].forEach(function(pair){
+var btn = document.createElement('button');
+btn.type = 'button';
+btn.className = 'study-accent-opt';
+btn.dataset.accent = pair[0];
+btn.textContent = pair[1];
+var active = accent === pair[0];
+btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+btn.classList.toggle('active', active);
+btn.addEventListener('click', function(){ setAccent(pair[0]); });
+group.appendChild(btn);
+});
+container.appendChild(group);
+}
+
 function init() {
 /*
  * App 是唯一启动入口：先渲染，再根据 URL hash 激活正确词集并初始化该词集功能，
  * 最后恢复星标与异步学习档案。hashchange 复用同一路径以支持深链接和浏览器历史。
  */
 WordTales.Renderer.render();
+initAccentControl();
 document.querySelectorAll('.set-btn').forEach(function(btn){
 btn.addEventListener('click', function(){ WordTales.Navigation.switchSet(btn.dataset.set, btn); });
 });
@@ -2559,7 +2621,7 @@ resetReadButtons();
  */
 return {
 Navigation: { switchSet: switchSet },
-Reader: { init: initReadAloud, toggle: toggleRead, stop: stopReading, speakWord: speakWord },
+Reader: { init: initReadAloud, toggle: toggleRead, stop: stopReading, speakWord: speakWord, getAccent: getAccent, setAccent: setAccent },
 WordPopup: { init: initWordJump, close: closeWordPopups },
 Progress: { list: getStarredWords, save: setStarredWords, toggle: toggleStarWord, has: isWordStarred, refresh: updateMainCardStars },
 Game: { start: function(sectionOrId) { startGame(resolveSection(sectionOrId)); }, end: endGame },

@@ -9,7 +9,6 @@ WordTales.StudySession = (function() {
   var stage = null;
   var state = null;
   var active = false;
-  var runtimeAudioActivated = false;
   var submitting = false;
 
   function nowIso() { return new Date().toISOString(); }
@@ -21,7 +20,7 @@ WordTales.StudySession = (function() {
     return { date: WordTales.LearningProgress.getDayKey(), completedIds: [], newCompletedIds: [], good: 0, hard: 0, again: 0 };
   }
   function freshState() {
-    return { version: 1, daily: emptyDaily(), round: null, lastCompletedRound: null, articleReview: null, audioActivated: false };
+    return { version: 1, daily: emptyDaily(), round: null, lastCompletedRound: null, articleReview: null };
   }
   function loadState() {
     var value = null;
@@ -37,7 +36,6 @@ WordTales.StudySession = (function() {
     return value;
   }
   function saveState() {
-    state.audioActivated = runtimeAudioActivated;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return true; } catch (e) { return false; }
   }
   function makeId() { return 'round-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9); }
@@ -134,11 +132,9 @@ WordTales.StudySession = (function() {
     var node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node;
   }
   function button(className, text, handler) {
-    var node = element('button', className, text); node.type = 'button'; node.addEventListener('click', function(event) { activateAudio(); handler(event); }); return node;
+    var node = element('button', className, text); node.type = 'button'; node.addEventListener('click', function(event) { handler(event); }); return node;
   }
-  function activateAudio() { runtimeAudioActivated = true; state.audioActivated = true; saveState(); }
   function speak(word) {
-    activateAudio();
     try { if (WordTales.Reader && WordTales.Reader.speakWord) WordTales.Reader.speakWord(word); } catch (e) {}
   }
   function appendHighlightedSentence(container, sentence, word) {
@@ -247,12 +243,10 @@ WordTales.StudySession = (function() {
   }
   function nextCard() {
     if (submitting) return;
-    var shouldSpeak = runtimeAudioActivated;
     if (state.round.cursor >= state.round.queue.length - 1) {
       state.round.finished = true; state.lastCompletedRound = JSON.parse(JSON.stringify(state.round)); saveState(); renderSummary(state.round); return;
     }
     state.round.cursor++; state.round.phase = 'prompt'; saveState(); renderCurrent();
-    if (shouldSpeak) { var item = state.round.queue[state.round.cursor]; setTimeout(function() { try { WordTales.Reader.speakWord(item.word); } catch (e) {} }, 120); }
   }
   function summaryMetric(label, value, className) {
     var node = element('div', 'study-summary-metric ' + (className || '')); node.appendChild(element('strong', '', String(value))); node.appendChild(element('span', '', label)); return node;
@@ -317,17 +311,15 @@ WordTales.StudySession = (function() {
   }
   function activate() {
     active = true; document.body.classList.add('study-mode'); document.body.classList.remove('library-mode');
-    runtimeAudioActivated = false;
     try { if (WordTales.Reader) WordTales.Reader.stop(); } catch (e) {}
     restoreRound(); renderCurrent();
   }
   function deactivate() {
-    active = false; runtimeAudioActivated = false; state.audioActivated = false; saveState();
+    active = false; saveState();
     try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); } catch (e) {}
   }
   function init() {
-    stage = document.getElementById('studyStage'); state = loadState(); runtimeAudioActivated = false;
-    document.addEventListener('visibilitychange', function() { if (document.hidden) { runtimeAudioActivated = false; state.audioActivated = false; saveState(); } });
+    stage = document.getElementById('studyStage'); state = loadState();
     return api;
   }
   var api = { init: init, activate: activate, deactivate: deactivate, generateRound: generateRound, openArticleReview: openArticleReview, applyArticleHighlights: applyArticleHighlights };
