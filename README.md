@@ -1,265 +1,145 @@
 # WordTales
 
-一个将英语词汇放回语境中学习的单页应用。项目收录 **7 份词集、28 个主题专栏、897 个词汇和 132 个短文段落**，并把词卡、主题阅读、语音朗读、逐段解析和复习练习整合在同一个页面中。
+一个把英语词汇放回语境中学习的静态单页应用。项目收录 **7 份词集、28 个主题栏目、897 个原始出现项、892 个规范学习词条和 132 个短文段落**。
 
-应用由一个 HTML 页面壳、独立 CSS、按职责拆分的原生 JavaScript 和 MP3 朗读资源组成；无构建步骤、无第三方运行时依赖，可离线打开，也可直接部署为静态站点。
+默认首页是打开即学的单词卡；原文章主页保留在右上角“文章学习”。项目没有构建步骤，所有资源和 FSRS-6 调度器都随站点打包，可离线或通过 `file://` 使用。
 
-## 功能
+## 主要功能
 
-- **语境阅读**：每列词汇对应一篇主题短文，目标词在文章中高亮显示。
-- **词卡学习**：单张词卡可翻转；每列可批量切换“英文 / 自定义 / 释义”状态。
-- **单词点读**：点击短文中的高亮词可查看词性和中文释义，并调用系统英文语音发音。
-- **短文朗读**：全部 28 个栏目播放预生成 MP3，并按静态时间轴逐词高亮；支持 x1.0–x1.5 倍速，播放时可通过固定在视口底部的控制条暂停、继续或停止。未来新增但尚未配置录音的栏目仍可使用 Web Speech API。
-- **逐段解析**：每个段落可翻转查看中文翻译、语法结构和重点表达。
-- **分类游戏**：将漂浮词卡拖入“比较认识”或“不太认识”，后者会被加星并加入复习清单；已分类卡片可随时拖到另一侧改判，普通点击仍会翻面查看释义。
-- **抄写练习**：桌面端使用键盘拼写，手机和平板使用横屏手写画板；练习范围仅包含当前列已加星的词。
-- **学习进度**：记录单词点读、词卡翻面、游戏分类、文章浏览和逐段解析，并通过浏览器 `IndexedDB` 异步保存。
-- **每日复习计划**：根据复习间隔、遗忘次数和时间衰减，将到期内容按“第几份 · 第几列”汇总展示。
-- **记忆热力图**：按词集展示绿色（回忆概率较高）、黄色（即将复习）、红色（到期或多次遗忘）和灰色（尚未学习）。
-- **学习定位**：今日计划可直接进入对应栏目；从热力图点击单词后，会定位到对应词卡并播放一次上浮提示动画。
-- **响应式与打印**：进度面板、提醒、热力图和学习功能均适配桌面端与移动端，并提供打印样式。
+- **三档回忆评分**：我认识 → `Good`、提示后想起 → `Hard`、没想起来 → `Again`。
+- **FSRS-6 调度**：使用随站点打包的 `ts-fsrs`，目标保持率 90%，关闭模糊间隔和同日重复。
+- **到期优先队列**：每轮最多 20 词，每天最多引入 40 个新词；当天答过的词不重复。
+- **中断恢复**：每次评分立即保存；刷新后恢复原轮次、原顺序和答案页，重复提交保持幂等。
+- **规范词条**：897 个文章出现项映射到 892 个学习词条；跨文章同义词共享状态，不同词义的两个 `brisk` 独立。
+- **统一生词状态**：学习卡、文章、分类游戏、生词抄写、热力图和统计统一读取规范词条的 `isStarred`。
+- **语境阅读与朗读**：28 个栏目提供原创短文、预生成 MP3、逐词高亮、段落解析和系统语音降级。
+- **旧主页工具**：词卡、文章点词、全部词/生词游戏、桌面拼写和移动端手写继续可用。
+- **响应式与打印**：学习卡、总结、进度面板、旧文章主页均支持桌面端和移动端。
 
 ## 快速开始
 
-下载后保留 `vocab-essays` 目录结构，并用浏览器打开：
+直接打开：
 
 ```text
 vocab-essays/vocab-essays.html
 ```
 
-也可以在仓库根目录启动本地静态服务器：
+或在仓库根目录启动静态服务器：
 
 ```bash
 python3 -m http.server 8000
 ```
 
-然后访问：
+然后访问 `http://localhost:8000/vocab-essays/vocab-essays.html`。
 
-```text
-http://localhost:8000/vocab-essays/vocab-essays.html
-```
+路由约定：
 
-建议使用较新的 Chrome、Edge 或 Safari。全部栏目直接播放随站点提供的录音；浏览器不支持 `SpeechSynthesis` 时，全文录音及其余学习功能仍可使用，仅单词点读和录音失败时的系统语音降级不可用。
+- 空 hash 或 `#study`：单词学习主页。
+- `#library`：旧文章主页。
+- `#s1col1` 等栏目 hash：直接进入对应文章。
+- 词集和更新日志原有 hash 继续可用。
 
-## 使用路径
+## 学习流程
 
-1. 在页首选择一份词集，通过粘性目录跳到目标专栏。
-2. 先浏览词卡，再阅读短文；点击高亮词可查看释义并听发音。
-3. 点击段尾“解析”查看翻译与语法说明，或选择倍速后点击“朗读”跟读全文；自动跟随单词时可用底部控制条暂停、继续或停止。
-4. 使用“游戏”将词汇按熟悉程度分类；标为“不太认识”的词会显示五角星，拖错后可把框内卡片直接拖到另一侧改判。
-5. 回到同一列点击“抄写”，集中练习已加星的词。
+1. 卡片初始只显示英文、来源、发音、“我认识”和“提示一下”。
+2. “我认识”直接记录 `Good`；“提示一下”只显示原文句子，不提交结果。
+3. 提示后选择“想起来了”记录 `Hard`，选择“没想起来”记录 `Again` 并加入生词。
+4. 答案页显示词性、释义、语境、下次复习时间和星标状态，点击“下一个”后才切卡。
+5. 一轮结束后查看三档统计、正确回忆率、新词/复习词数量，并继续下一轮或进入相关文章。
+
+到期词按逾期时长、遗忘次数、FSRS 回忆概率、难度、最近复习时间和原始词序排序。到期词不足 20 个时才补新词；两池按保持内部顺序的方式交错展示。
 
 ## 内容概览
 
-| 词集 | 专栏 | 词汇 | 段落 | 主题示例 |
-| --- | ---: | ---: | ---: | --- |
-| 第一份 | 4 | 131 | 16 | 国际贸易博览会、实验室突破、北极探险危机、王国新政 |
-| 第二份 | 4 | 115 | 16 | 不懈求真、边境小镇危机、都市梦、企业诉讼 |
-| 第三份 | 5 | 169 | 24 | 星海探微、心灵重启、寻根之旅、冰川危途 |
-| 第四份 | 4 | 130 | 21 | 街区新生、街区复兴、海岛守卫、艺术寻觅 |
-| 第五份 | 4 | 136 | 24 | 孤岛寻芳、制药风暴、贵族觉醒、沙漠迷途 |
-| 第六份 | 4 | 130 | 18 | 医学调查、美术馆之谜、校园竞赛丑闻、旧工厂调查 |
-| 第七份 | 3 | 86 | 13 | 民众运动、侦探迷案调查、中世纪城堡攻防 |
-| **合计** | **28** | **897** | **132** | |
+| 词集 | 栏目 | 出现项 | 段落 |
+| --- | ---: | ---: | ---: |
+| 第一份 | 4 | 131 | 16 |
+| 第二份 | 4 | 115 | 16 |
+| 第三份 | 5 | 169 | 24 |
+| 第四份 | 4 | 130 | 21 |
+| 第五份 | 4 | 136 | 24 |
+| 第六份 | 4 | 130 | 18 |
+| 第七份 | 3 | 86 | 13 |
+| **合计** | **28** | **897** | **132** |
 
 ## 项目结构
 
 ```text
 .
-├── .github/workflows/jekyll-gh-pages.yml  # GitHub Pages 发布流程
+├── .github/workflows/jekyll-gh-pages.yml
+├── scripts/check-integrity.js
 ├── vocab-essays/
-│   ├── audio/                             # 预生成全文朗读 MP3
-│   ├── css/styles.css                     # 页面样式与响应式规则
+│   ├── audio/                         # 栏目朗读 MP3
+│   ├── css/styles.css                 # 两套主页、交互和响应式样式
+│   ├── vendor/ts-fsrs/                # 官方 UMD 包、元数据与 MIT 许可证
 │   ├── js/
-│   │   ├── namespace.js                   # 全局命名空间初始化
-│   │   ├── data.js                        # 词集、解析与逐词时间轴
-│   │   ├── renderer.js                    # 数据到初始 DOM
-│   │   ├── learning-progress.js           # 学习档案与复习调度
-│   │   └── features.js                    # 阅读、词卡、游戏等交互
-│   └── vocab-essays.html                  # 页面结构、更新日志与资源入口
+│   │   ├── namespace.js               # WordTales 命名空间
+│   │   ├── data.js                    # 内容、出现项和规范词条索引
+│   │   ├── renderer.js                # 旧文章主页 DOM
+│   │   ├── learning-progress-v2.js    # FSRS、迁移、事件和统一星标
+│   │   ├── study-session.js           # 学习队列、卡片状态机和恢复
+│   │   └── features.js                # 文章、朗读、游戏、抄写和路由
+│   └── vocab-essays.html
+├── CLAUDE.md
 ├── LICENSE
 └── README.md
 ```
 
-## 代码架构
-
-`vocab-essays.html` 以有序的经典脚本加载 `js/` 中的模块；全部模块仍按职责挂载在全局命名空间 `WordTales` 下，因此无需构建工具并兼容 `file://` 直开：
+经典脚本使用 `defer` 按依赖顺序加载：
 
 ```text
-结构化词集数据
-    │
-    ▼
-WordTales.Data ──索引与查询──► WordTales.Renderer
-                                      │ 生成页面 DOM
-                                      ▼
-                              WordTales.Features
-                    ┌───────────┬─────┴─────┬───────────┐
-                 Navigation   Reader      Cards      Analysis
-                                            │
-                              WordPopup / Game / CopyPractice
-                                            │
-                                            ▼
-                                  WordTales.App.init
+ts-fsrs UMD
+  → namespace
+  → data
+  → renderer
+  → learning-progress-v2
+  → study-session
+  → features / App.init
 ```
 
-### 模块职责
+## 公共接口
 
-| 模块 | 职责 |
-| --- | --- |
-| `WordTales.Data` | 保存词集数据，建立词集、专栏、词汇和段落索引；提供新增与查询 API。 |
-| `WordTales.Renderer` | 将数据转义并渲染为词集切换器、专栏、词卡和短文 DOM。 |
-| `Navigation` | 切换词集、更新专栏目录和统计信息，并清理正在运行的朗读状态。 |
-| `Reader` | 播放栏目 MP3 或选择系统英文语音，通过静态 cue 或边界事件同步逐词高亮和进度。 |
-| `WordPopup` | 通过 `data-vocab-id` 查询词汇，显示释义弹层并播放单词发音。 |
-| `Progress` | 读写 `localStorage.starredWords`，同步主页面和游戏中的加星状态。 |
-| `LearningProgress` | 记录学习事件，计算回忆概率与复习间隔，生成每日建议、提醒和记忆热力图。 |
-| `Game` | 创建全屏拖拽分类场景，使用 `requestAnimationFrame` 驱动漂浮词卡。 |
-| `CopyPractice` | 过滤当前专栏的加星词，并按设备选择键盘输入或 Canvas 手写模式。 |
-| `Analysis` | 将短文切换为解析视图，通过段落 ID 加载翻译与语法要点。 |
-| `Cards` | 初始化 3D 词卡、批量翻面工具栏，以及游戏和抄写入口。 |
-| `App` | 按顺序完成渲染和各交互模块初始化。 |
+`WordTales.Data`：
 
-学习档案和逐次事件记录优先写入 `IndexedDB`。首次运行新版时，已有的
-`wordtales.learning.v1` 数据会自动迁移；`localStorage.starredWords` 继续用于兼容原有加星功能。
-浏览器不支持或无法打开 `IndexedDB` 时，系统会自动降级到 `localStorage`。
+- `resolveEntryId(occurrenceId)`
+- `getEntry(entryId)`
+- `getContexts(entryId)`
+- `getAllEntries()`
 
-### 记忆热力图与复习建议算法
+`WordTales.LearningProgress`：
 
-每个单词独立保存复习次数、正确次数、遗忘次数、连续遗忘次数、记忆稳定度、
-上次复习时间和下次复习时间。不同学习操作会按以下方式更新记录：
+- `rateWord(entryId, rating, meta, submissionId)`
+- `getDueEntries(at)`
+- `getEntryState(entryId)`
+- `getStarredEntryIds()` / `setStarred(entryId, value, meta)`
+- `trackWord()`（旧功能兼容适配器）
 
-- 首次点击文章中的单词或翻转词卡：若还没有复习计划，将首次复习安排在 1 天后。
-- 游戏中选择“不太认识”：连续遗忘次数加 1，将复习间隔设为 0.5 天；记忆稳定度乘以 `0.62`，但最低为 `0.45` 天。
-- 游戏中选择“比较认识”：连续遗忘次数归零。第一次正确复习把间隔扩大为原来的 2 倍；之后的增长倍率为
-  `min(2.5, 1.75 + 正确次数 × 0.06)`，总间隔最长为 90 天。
-- 正确复习后的稳定度取“新间隔”和“原稳定度 × 1.55”中的较大值。
+`WordTales.StudySession`：
 
-热力图首先计算预计回忆概率：
+- `init()` / `activate()` / `deactivate()`
+- `generateRound()`
+- `openArticleReview(columnId)`
 
-```text
-t = 距离上次复习的天数；没有复习记录时使用最后接触时间
-S = max(0.4, 当前记忆稳定度)
-P = clamp(exp(-t / S) × 0.94 ^ min(累计遗忘次数, 6), 0, 1)
-```
+## 数据保存与迁移
 
-其中 `P` 越接近 `1`，表示系统预计当前越容易回忆。颜色判定顺序如下：
+学习档案和事件优先保存在 IndexedDB。v1 档案会幂等迁移为规范词条状态：保留既有到期时间，合并重复词记录，并把旧字符串星标映射到同拼写的规范词条。新档案中的 `isStarred` 是唯一事实来源；`localStorage.starredWords` 只作为旧功能兼容镜像。
 
-| 颜色 | 判定规则 |
-| --- | --- |
-| 灰色 | 该单词还没有任何学习记录。 |
-| 红色 | 已到下次复习时间，或连续两次被标为“不太认识”。 |
-| 黄色 | 距离下次复习不超过 1.5 天，或预计回忆概率低于 `72%`。 |
-| 绿色 | 已学习，并且不符合红色或黄色条件。 |
+浏览器无法使用 IndexedDB 时自动降级到 localStorage，并在学习卡中给出非阻塞提示。评分提交 ID 由轮次、词条和尝试次数组成，可防止刷新或连点造成双重调度。
 
-“今天学什么”会选出下次复习时间不晚于今天 `23:59:59` 的单词；连续两次被标为
-“不太认识”的单词也会立即进入今日计划。系统再按“第几份 · 第几列”合并这些单词，
-显示每列的到期词数量，并优先排列到期词较多的栏目。顶部“今天需复习”统计的仍是单词总数。
+## 验证
 
-这是一套适合当前纯前端应用的启发式调度规则，并非经过用户数据校准的 SM-2 或 FSRS 模型。
-后续获得真实复习结果后，可以再调整衰减系数、阈值和间隔增长倍率。
-
-页面启动顺序为：
-
-```text
-DOMContentLoaded
-  → Renderer.render()
-  → Cards / Analysis / Reader / WordPopup 初始化
-  → 绑定词集切换
-  → 激活第一份词集
-  → 从 IndexedDB 恢复学习档案并迁移旧数据
-  → 恢复本地加星状态与每日提醒
-```
-
-## 数据模型与扩展
-
-内容位于 `vocab-essays/js/data.js` 内 `WordTales.Data` 的 `sets` 数组中，层级为 `set → column → words / paragraphs`。一个精简示例如下：
-
-```js
-{
-  id: "set8",
-  number: 8,
-  label: "第八份",
-  columns: [{
-    id: "s8col1",
-    number: 1,
-    audio: {
-      src: "audio/list8_col1.mp3",
-      cues: [[0.32, 0.58], [0.58, 0.91], [0.91, 1.12], [1.12, 1.50], null]
-    },
-    title: "第一列",
-    theme: { zh: "主题中文名", en: "English Theme" },
-    words: [{
-      id: "s8col1-example",
-      word: "example",
-      pos: "n.",
-      meaning: "例子"
-    }],
-    paragraphs: [{
-      id: "s8col1-p1",
-      segments: [
-        "This is an ",
-        { vocabId: "s8col1-example", text: "example" },
-        "."
-      ],
-      analysis: {
-        translation: "这是一个例子。",
-        points: ["语法与表达说明"]
-      }
-    }]
-  }]
-}
-```
-
-维护内容时需要遵守三条关联规则：
-
-1. `set`、`column`、`word` 和 `paragraph` 的 `id` 必须唯一。
-2. 段落对象片段的 `vocabId` 必须指向当前专栏中真实存在的词汇 ID。
-3. `analysis` 与段落放在同一对象中；`points` 可使用 `<span class="keyword">...</span>` 标注重点，其余内容会在展示前转义。
-
-`audio` 为可选配置。页面会分别按空白拆分每个 `segments` 项，因此 `cues` 必须与这些运行时 token 一一对应；每个非空项是该 token 在 MP3 中的 `[开始秒数, 结束秒数]`。录音未读出的词和独立标点使用 `null`。
-
-除了直接编辑 `sets`，也可以在应用初始化前调用：
-
-```js
-WordTales.Data.addWords(columnId, words);
-WordTales.Data.addParagraphs(columnId, paragraphs);
-WordTales.Data.addSet(set);
-WordTales.Data.getColumn(columnId);
-```
-
-渲染器会自动生成词数、切换按钮和专栏导航。若增加全新的交互模块，应继续挂载到 `WordTales`，并在 `WordTales.App.init` 中初始化，以避免向全局作用域散落额外状态。
-
-## 技术说明
-
-- 原生 HTML、CSS 和 JavaScript，无运行时依赖。
-- HTML Audio：播放预生成的栏目 MP3，使用静态逐词时间轴同步阅读进度。
-- Web Speech API：未来无录音栏目的全文朗读、录音加载失败时的降级，以及单词点读。
-- Canvas 2D：移动端手写练习。
-- Web Storage API：保存加星词汇。
-- `requestAnimationFrame`：驱动分类游戏中的词卡运动。
-- CSS 变量、3D transform、媒体查询和打印样式：主题、翻卡和多端适配。
-
-仓库没有打包流程。修改后可先运行零依赖完整性检查：
+运行零依赖完整性检查：
 
 ```bash
 node scripts/check-integrity.js
 ```
 
-该脚本会检查外部静态资源、JavaScript 语法、数据 JSON、重复 ID、必填词汇字段、段落词汇引用、录音文件及逐词 cue 的数量和顺序。通过后仍应手动检查：词集切换、词卡翻面、段落解析、录音与系统语音启停、游戏拖放、刷新后的加星恢复，以及桌面端和移动端抄写模式。
+检查包括脚本语法、资源路径、897→892 映射、五组同义合并、两个 `brisk` 独立、所有词条语境和来源顺序、FSRS-6 版本与三档间隔，以及音频 cue 完整性。
+
+手动 smoke test 应覆盖：默认学习页、三条评分路径、刷新恢复、总结页、自动发音授权、文章回跳、统一星标、游戏范围、抄写、旧主页深链、桌面和窄屏布局，以及 `file://` 打开。
 
 ## 部署
 
-仓库已配置 GitHub Pages Actions：`.github/workflows/jekyll-gh-pages.yml`。
+GitHub Pages 工作流会复制 HTML、CSS、JavaScript、音频、`vendor/` 和 README 到 `_site`。不运行 Jekyll，不从 CDN 下载运行时依赖。
 
-工作流在推送到 `main` 或手动触发时执行：
-
-1. 检出仓库并配置 GitHub Pages。
-2. 将 `vocab-essays/vocab-essays.html` 复制为 `_site/index.html`。
-3. 将 `vocab-essays/css`、`vocab-essays/js`、`vocab-essays/audio` 和 `README.md` 一并放入发布产物。
-4. 上传静态站点并部署到 GitHub Pages。
-
-首次部署时，在仓库 **Settings → Pages → Build and deployment** 中将 **Source** 设为 **GitHub Actions**。此项目不经过 Jekyll 构建。
-
-## License
-
-[MIT](LICENSE)
+`ts-fsrs` 按 MIT 许可证分发，许可证文本位于 `vocab-essays/vendor/ts-fsrs/LICENSE`。

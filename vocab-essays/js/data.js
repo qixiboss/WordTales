@@ -13039,6 +13039,22 @@ WordTales.Data = (function() {
   var columnMap = Object.create(null);
   var wordMap = Object.create(null);
   var paragraphMap = Object.create(null);
+  var occurrenceMap = Object.create(null);
+  var entryMap = Object.create(null);
+  var allEntries = [];
+
+  /*
+   * 教材中的 word.id 表示一次“出现”，学习档案需要表示稳定的“词条”。
+   * 只有人工确认同词性、同核心义的重复项才归并；不能按英文字符串自动去重，
+   * 否则 brisk 一类同形异义词会错误共享进度。
+   */
+  var canonicalAliases = {
+    's6col2-radiate': 's1col1-radiate',
+    's6col4-proximity': 's1col1-proximity',
+    's6col3-barren': 's1col1-barren',
+    's3col5-inferior': 's2col2-inferior',
+    's6col4-discern': 's4col3-discern'
+  };
 
   /*
    * 用四张扁平索引换取后续功能的 O(1) 查询。所有模块都引用同一份对象，
@@ -13055,6 +13071,108 @@ WordTales.Data = (function() {
 
   sets.forEach(indexSet);
 
+  function normalizeSentenceText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function sentenceForSegment(segments, segmentIndex) {
+    var text = '';
+    var start = 0;
+    var end = 0;
+    segments.forEach(function(segment, index) {
+      var part = typeof segment === 'string' ? segment : segment.text;
+      if (index === segmentIndex) start = text.length;
+      text += part;
+      if (index === segmentIndex) end = text.length;
+    });
+    var left = start;
+    while (left > 0 && !/[.!?]/.test(text.charAt(left - 1))) left--;
+    var right = end;
+    while (right < text.length && !/[.!?]/.test(text.charAt(right))) right++;
+    if (right < text.length) right++;
+    return normalizeSentenceText(text.slice(left, right));
+  }
+
+  function buildCanonicalIndex() {
+    occurrenceMap = Object.create(null);
+    entryMap = Object.create(null);
+    allEntries = [];
+    var sourceOrder = 0;
+
+    sets.forEach(function(set) {
+      set.columns.forEach(function(column) {
+        var firstContextByOccurrence = Object.create(null);
+        column.paragraphs.forEach(function(paragraph) {
+          paragraph.segments.forEach(function(segment, segmentIndex) {
+            if (typeof segment === 'string' || firstContextByOccurrence[segment.vocabId]) return;
+            firstContextByOccurrence[segment.vocabId] = {
+              paragraphId: paragraph.id,
+              sentence: sentenceForSegment(paragraph.segments, segmentIndex)
+            };
+          });
+        });
+
+        /* 正文首次出现顺序优先；极端缺失语境时才退回原词表顺序。 */
+        var orderedIds = [];
+        column.paragraphs.forEach(function(paragraph) {
+          paragraph.segments.forEach(function(segment) {
+            if (typeof segment !== 'string' && orderedIds.indexOf(segment.vocabId) < 0) orderedIds.push(segment.vocabId);
+          });
+        });
+        column.words.forEach(function(word) {
+          if (orderedIds.indexOf(word.id) < 0) orderedIds.push(word.id);
+        });
+
+        orderedIds.forEach(function(occurrenceId) {
+          var word = wordMap[occurrenceId];
+          if (!word) return;
+          var entryId = canonicalAliases[occurrenceId] || occurrenceId;
+          var contextInfo = firstContextByOccurrence[occurrenceId] || { paragraphId: '', sentence: '' };
+          var occurrence = {
+            id: occurrenceId,
+            occurrenceId: occurrenceId,
+            entryId: entryId,
+            word: word,
+            set: set,
+            column: column,
+            paragraphId: contextInfo.paragraphId,
+            contextSentence: contextInfo.sentence,
+            sourceOrder: sourceOrder++
+          };
+          occurrenceMap[occurrenceId] = occurrence;
+          if (!entryMap[entryId]) {
+            entryMap[entryId] = {
+              id: entryId,
+              entryId: entryId,
+              word: word.word,
+              pos: word.pos,
+              meaning: word.meaning,
+              sourceOrder: occurrence.sourceOrder,
+              primaryOccurrenceId: occurrenceId,
+              occurrences: [],
+              contexts: []
+            };
+            allEntries.push(entryMap[entryId]);
+          }
+          entryMap[entryId].occurrences.push(occurrence);
+          entryMap[entryId].contexts.push({
+            occurrenceId: occurrenceId,
+            setId: set.id,
+            setLabel: set.label,
+            columnId: column.id,
+            columnTitle: column.title,
+            paragraphId: contextInfo.paragraphId,
+            sentence: contextInfo.sentence,
+            sourceOrder: occurrence.sourceOrder
+          });
+        });
+      });
+    });
+    allEntries.sort(function(a, b) { return a.sourceOrder - b.sourceOrder; });
+  }
+
+  buildCanonicalIndex();
+
   // 扩展 API 在写入前拒绝未知父级和重复 ID，尽早暴露内容装配错误。
   function addWords(columnId, words) {
     var column = columnMap[columnId];
@@ -13064,6 +13182,7 @@ WordTales.Data = (function() {
       column.words.push(word);
       wordMap[word.id] = word;
     });
+    buildCanonicalIndex();
   }
 
   function addParagraphs(columnId, paragraphs) {
@@ -13074,12 +13193,14 @@ WordTales.Data = (function() {
       column.paragraphs.push(paragraph);
       paragraphMap[paragraph.id] = paragraph;
     });
+    buildCanonicalIndex();
   }
 
   function addSet(set) {
     if (!set.id || setMap[set.id]) throw new Error('Invalid or duplicate set id: ' + set.id);
     sets.push(set);
     indexSet(set);
+    buildCanonicalIndex();
   }
 
   function countWords(set) {
@@ -13096,6 +13217,19 @@ WordTales.Data = (function() {
     getColumn: function(id) { return columnMap[id] || null; },
     getWord: function(id) { return wordMap[id] || null; },
     getParagraph: function(id) { return paragraphMap[id] || null; },
+    resolveEntryId: function(occurrenceId) {
+      return occurrenceMap[occurrenceId] ? occurrenceMap[occurrenceId].entryId : (canonicalAliases[occurrenceId] || occurrenceId || '');
+    },
+    getEntry: function(id) {
+      var entryId = occurrenceMap[id] ? occurrenceMap[id].entryId : (canonicalAliases[id] || id);
+      return entryMap[entryId] || null;
+    },
+    getOccurrence: function(id) { return occurrenceMap[id] || null; },
+    getContexts: function(id) {
+      var entry = this.getEntry(id);
+      return entry ? entry.contexts.slice() : [];
+    },
+    getAllEntries: function() { return allEntries.slice(); },
     addWords: addWords,
     addParagraphs: addParagraphs,
     addSet: addSet,

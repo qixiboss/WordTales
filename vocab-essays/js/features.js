@@ -1045,7 +1045,8 @@ break;
 }
 if (!info) return;
 WordTales.LearningProgress.trackWord(wordEl.dataset.vocabId, 'click', {
-paragraphId: wordEl.closest('p') ? wordEl.closest('p').dataset.paragraphId : ''
+paragraphId: wordEl.closest('p') ? wordEl.closest('p').dataset.paragraphId : '',
+occurrenceId: wordEl.dataset.vocabId
 });
 document.querySelectorAll('.word-popup').forEach(function(p){
 var owner = p.dataset.ownerWordId ? document.getElementById(p.dataset.ownerWordId) : null;
@@ -1141,56 +1142,46 @@ var cachedDzRects = [];
 var gameResizeHandler = null;
 var _gameSection = null;
 
-var _starredCache = null;
-var _starredCacheValid = false;
-
-/*
- * Progress（星标）保留独立 localStorage 格式，是为了兼容旧版和抄写功能。
- * LearningProgress 会在首次升级时把星标迁入调度记录，但不会接管这份列表。
- */
 function getStarredWords() {
-if (_starredCacheValid) return _starredCache;
-try {
-_starredCache = JSON.parse(localStorage.getItem('starredWords') || '[]');
-} catch(e) {
-_starredCache = [];
-}
-_starredCacheValid = true;
-return _starredCache;
+if (!WordTales.LearningProgress) return [];
+return WordTales.LearningProgress.getStarredEntryIds().map(function(id){
+var entry = WordTales.Data.getEntry(id);
+return entry ? entry.word : '';
+}).filter(Boolean);
 }
 
 function setStarredWords(arr) {
-_starredCache = arr;
-_starredCacheValid = true;
-try {
-localStorage.setItem('starredWords', JSON.stringify(arr));
-} catch(e) {}
+var selected = (arr || []).map(function(word){ return String(word).toLowerCase(); });
+WordTales.Data.getAllEntries().forEach(function(entry){
+WordTales.LearningProgress.setStarred(entry.id, selected.indexOf(entry.word.toLowerCase()) >= 0, 'compatibility');
+});
 }
 
-function toggleStarWord(word, add) {
-var starred = getStarredWords();
-var idx = starred.indexOf(word);
-if (add && idx < 0) {
-starred.push(word);
-} else if (!add && idx >= 0) {
-starred.splice(idx, 1);
+function toggleStarWord(word, add, occurrenceId) {
+if (occurrenceId) {
+WordTales.LearningProgress.setStarred(occurrenceId, add, add ? 'manual' : '');
+return;
 }
-setStarredWords(starred);
+WordTales.Data.getAllEntries().forEach(function(entry){
+if (entry.word.toLowerCase() === String(word).toLowerCase()) WordTales.LearningProgress.setStarred(entry.id, add, add ? 'manual' : '');
+});
 }
 
-function isWordStarred(word) {
-return getStarredWords().indexOf(word) >= 0;
+function isWordStarred(word, occurrenceId) {
+if (occurrenceId) {
+var record = WordTales.LearningProgress.getEntryState(occurrenceId);
+return !!(record && record.isStarred);
+}
+return getStarredWords().some(function(value){ return value.toLowerCase() === String(word).toLowerCase(); });
 }
 
 function updateMainCardStars(section) {
 // 游戏修改星标后立即镜像到主词卡；DOM 星形只是缓存的视觉投影。
-var starred = getStarredWords();
 (section || document).querySelectorAll('.vocab-card').forEach(function(card){
 var vw = card.querySelector('.vw');
 if (!vw) return;
-var word = vw.textContent.trim();
 var existing = card.querySelector('.vocab-card-star');
-if (starred.indexOf(word) >= 0) {
+if (isWordStarred(vw.textContent.trim(), card.dataset.vocabId)) {
 if (!existing) {
 var star = document.createElement('span');
 star.className = 'vocab-card-star';
@@ -1213,13 +1204,18 @@ return rect ? Math.max(maxBottom, rect.bottom + 16) : maxBottom;
 }, 180);
 }
 
-function startGame(section) {
+function startGame(section, scope) {
 /*
  * Game 为当前专栏克隆一组全屏卡片。克隆而不是搬移主卡片，可以让退出游戏
  * 成为纯清理操作，也避免破坏原页面的翻卡状态和布局。
  */
-var cards = section.querySelectorAll('.vocab-card');
-if (cards.length === 0) return;
+scope = scope === 'starred' ? 'starred' : 'all';
+var allCards = Array.prototype.slice.call(section.querySelectorAll('.vocab-card'));
+var cards = allCards.filter(function(card){
+var vw = card.querySelector('.vw');
+return scope === 'all' || (vw && isWordStarred(vw.textContent.trim(), card.dataset.vocabId));
+});
+if (allCards.length === 0) return;
 
 _gameSection = section;
 
@@ -1248,9 +1244,37 @@ exitBtn.textContent = '退出游戏';
 exitBtn.setAttribute('aria-label', '退出游戏模式');
 exitBtn.addEventListener('click', endGame);
 header.appendChild(title);
+var scopeToggle = document.createElement('div');
+scopeToggle.className = 'game-scope-toggle';
+scopeToggle.setAttribute('role', 'group');
+scopeToggle.setAttribute('aria-label', '游戏单词范围');
+[['all','全部词'],['starred','生词']].forEach(function(option){
+var scopeBtn = document.createElement('button');
+scopeBtn.type = 'button';
+scopeBtn.textContent = option[1];
+scopeBtn.className = option[0] === scope ? 'active' : '';
+scopeBtn.setAttribute('aria-pressed', option[0] === scope ? 'true' : 'false');
+scopeBtn.addEventListener('click', function(){
+if (option[0] === scope) return;
+endGame();
+startGame(section, option[0]);
+});
+scopeToggle.appendChild(scopeBtn);
+});
+header.appendChild(scopeToggle);
 header.appendChild(progress);
 header.appendChild(exitBtn);
 gameOverlay.appendChild(header);
+
+if (cards.length === 0) {
+var emptyState = document.createElement('div');
+emptyState.className = 'game-empty-state';
+emptyState.innerHTML = '<strong>这个栏目还没有生词</strong><span>在单词学习中选择“没想起来”，或先用“全部词”进行分类。</span>';
+gameOverlay.appendChild(emptyState);
+document.body.appendChild(gameOverlay);
+activateModal(gameOverlay, endGame, '词汇分类游戏');
+return;
+}
 
 gameDropzones = [];
 var dzFamiliar = document.createElement('div');
@@ -1319,7 +1343,7 @@ inner.appendChild(front);
 inner.appendChild(back);
 gameCard.appendChild(inner);
 
-if (isWordStarred(word)) {
+if (isWordStarred(word, gameCard.dataset.vocabId)) {
 var star = document.createElement('span');
 star.className = 'game-star';
 star.textContent = '\u2605';
@@ -1606,7 +1630,8 @@ var word = card.dataset.word || '';
 var isUnfamiliar = nextClassification === 'unfamiliar';
 if (card.dataset.vocabId && previousClassification !== nextClassification) {
 var trackMeta = {
-columnId: _gameSection ? _gameSection.id : ''
+columnId: _gameSection ? _gameSection.id : '',
+occurrenceId: card.dataset.vocabId || ''
 };
 if (previousClassification) {
 trackMeta.reclassifiedFrom = previousClassification === 'unfamiliar' ? 'unknown' : 'known';
@@ -1620,7 +1645,7 @@ word + '，当前为' + (isUnfamiliar ? '不太认识' : '比较认识') +
 '；可拖到另一个框重新分类，按左方向键标记为比较认识，按右方向键标记为不太认识，按回车翻面'
 );
 if (isUnfamiliar) {
-toggleStarWord(word, true);
+toggleStarWord(word, true, card.dataset.vocabId);
 var existingStar = card.querySelector('.game-star');
 if (!existingStar) {
 var star = document.createElement('span');
@@ -1629,7 +1654,7 @@ star.textContent = '\u2605';
 card.appendChild(star);
 }
 } else {
-toggleStarWord(word, false);
+toggleStarWord(word, false, card.dataset.vocabId);
 var existingStar = card.querySelector('.game-star');
 if (existingStar) existingStar.remove();
 }
@@ -1748,17 +1773,13 @@ return _copyCardMap[word.toLowerCase()] || '';
 function startCopy(section) {
 _copyCardMap = null;
 _copySection = section;
-var starred = getStarredWords();
-var sectionWords = [];
+var sectionStarred = [];
 if (section) {
-section.querySelectorAll('.vocab-card .vw').forEach(function(vw){
-sectionWords.push(vw.textContent.trim().toLowerCase());
+section.querySelectorAll('.vocab-card').forEach(function(card){
+var vw = card.querySelector('.vw');
+if (vw && isWordStarred(vw.textContent.trim(), card.dataset.vocabId)) sectionStarred.push(vw.textContent.trim());
 });
 }
-// 全局星标与当前专栏取交集，保证入口所在栏目就是练习上下文。
-var sectionStarred = starred.filter(function(w){
-return sectionWords.indexOf(w.toLowerCase()) >= 0;
-});
 if (sectionStarred.length === 0) {
 showCopyAlert(section);
 return;
@@ -2368,7 +2389,8 @@ card.classList.toggle('flipped');
 card.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
 if (card.dataset.vocabId) {
 WordTales.LearningProgress.trackWord(card.dataset.vocabId, 'card', {
-columnId: card.closest('.column-section') ? card.closest('.column-section').id : ''
+columnId: card.closest('.column-section') ? card.closest('.column-section').id : '',
+occurrenceId: card.dataset.vocabId
 });
 }
 }
@@ -2475,9 +2497,18 @@ targetId = window.location.hash ? decodeURIComponent(window.location.hash.slice(
 } catch (e) {
 targetId = window.location.hash.slice(1);
 }
+if (!targetId || targetId === 'study') {
+WordTales.StudySession.activate();
+return;
+}
+WordTales.StudySession.deactivate();
+document.body.classList.remove('study-mode');
+document.body.classList.add('library-mode');
+if (targetId === 'library') targetId = '';
 if (targetId === 'changelog') {
 var changelogBtn = document.querySelector('.set-btn[data-set="changelog"]');
 WordTales.Navigation.switchSet('changelog', changelogBtn);
+setTimeout(WordTales.StudySession.applyArticleHighlights, 0);
 return;
 }
 // hash 可以指向词集或专栏；先反查所属词集，切换后再滚动到具体专栏。
@@ -2497,13 +2528,18 @@ WordTales.Navigation.switchSet(targetSet.id, targetButton);
 if (targetId && document.getElementById(targetId)) {
 requestAnimationFrame(function(){
 document.getElementById(targetId).scrollIntoView({ block: 'start' });
+WordTales.StudySession.applyArticleHighlights();
 });
+} else {
+setTimeout(WordTales.StudySession.applyArticleHighlights, 0);
 }
 }
-switchToHash();
 window.addEventListener('hashchange', switchToHash);
+WordTales.LearningProgress.init().then(function(){
+WordTales.StudySession.init();
 WordTales.Progress.refresh();
-WordTales.LearningProgress.init();
+switchToHash();
+});
 }
 
 function resolveSection(sectionOrId) {

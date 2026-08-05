@@ -6,10 +6,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="通过主题短文、双面词卡、语音朗读和练习功能，在真实语境中学习和记忆英语词汇。">
 <title>词汇记忆短文集 · Vocabulary in Context</title>
-<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235b7cfa'/%3E%3Ctext x='16' y='23' font-size='18' font-family='Georgia' fill='white' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css?v=3.0.2">
 </head>
-<body>
-<header class="cover">
+<body class="study-mode">
+<section class="study-home" id="studyHome" aria-label="单词学习">
+  <header class="study-topbar">
+    <a class="study-brand" href="#study" aria-label="WordTales 单词学习主页">
+      <span class="study-brand-mark" aria-hidden="true">W</span>
+      <span>WordTales</span>
+    </a>
+    <div class="study-top-actions">
+      <button type="button" class="study-top-link progress-entry" id="studyProgressEntry">学习进度</button>
+      <a class="study-top-link" href="#library">文章学习 <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+  <div class="study-stage" id="studyStage" aria-live="polite">
+    <div class="study-loading" role="status"><span></span><p>正在恢复你的学习计划…</p></div>
+  </div>
+</section>
+<header class="cover library-view">
+  <a class="library-back-study" href="#study">返回背词</a>
   <div class="cover-inner">
     <p class="kicker">Vocabulary in Context</p>
     <h1>词汇记忆短文集</h1>
@@ -21,14 +38,26 @@
     </button>
   </div>
 </header>
-<nav class="toc" id="toc" aria-label="栏目目录"></nav>
-<aside class="daily-reminder" id="dailyReminder" hidden aria-live="polite"></aside>
-<main id="appContent"></main>
+<nav class="toc library-view" id="toc" aria-label="栏目目录"></nav>
+<aside class="daily-reminder library-view" id="dailyReminder" hidden aria-live="polite"></aside>
+<main class="library-view" id="appContent"></main>
 <template id="changelog-tpl">
 <div class="changelog">
   <div class="changelog-head">
     <h2>第八份：更新日志</h2>
     <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v3.0 <span class="cv-badge major">大版本</span></h3>
+    <div class="cv-date">2026-08-05</div>
+    <div class="cv-desc"><strong>打开即学的三档单词记忆系统。</strong>默认主页升级为单卡学习模式，以 FSRS-6 调度 892 个规范词条，同时完整保留文章学习入口。</div>
+    <ul>
+      <li>新增“我认识 / 想起来了 / 没想起来”三档回忆反馈，分别映射 Good / Hard / Again</li>
+      <li>每轮最多 20 词，到期优先、每日最多 40 个新词，并支持中断恢复与当天去重</li>
+      <li>统一学习档案、生词星标、游戏、抄写与文章高亮的数据来源</li>
+      <li>引入离线 FSRS-6 调度器，旧学习记录自动迁移且不清空</li>
+    </ul>
   </div>
 
   <div class="changelog-version">
@@ -140,19 +169,23 @@
   </div>
 </div>
 </template>
-<footer>
+<footer class="library-view">
 <p>
 <span class="tip-icon">学习建议：</span>建议先通读短文，根据上下文推测加粗彩色词的含义，再对照上方词卡复习。每篇短文反复阅读 2–3 遍，有助于在语境中牢固记忆单词。点击顶部按钮可在第一份至第八份之间切换，第八份为更新日志。</p>
 </footer>
 
-<script defer src="js/namespace.js"></script>
+<script defer src="vendor/ts-fsrs/index.umd.js?v=5.4.1"></script>
 
-<script defer src="js/data.js"></script>
+<script defer src="js/namespace.js?v=3.0.0"></script>
 
-<script defer src="js/renderer.js"></script>
+<script defer src="js/data.js?v=3.0.0"></script>
 
-<script defer src="js/learning-progress.js"></script>
+<script defer src="js/renderer.js?v=3.0.0"></script>
 
-<script defer src="js/features.js"></script>
+<script defer src="js/learning-progress-v2.js?v=3.0.4"></script>
+
+<script defer src="js/study-session.js?v=3.0.3"></script>
+
+<script defer src="js/features.js?v=3.0.1"></script>
 </body>
 </html>

@@ -1,95 +1,104 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for coding agents working in this repository.
 
 ## Project overview
 
-WordTales is a single-page, zero-dependency English vocabulary learning app. `vocab-essays/vocab-essays.html` is the page shell; styles live in `vocab-essays/css/`, ordered classic scripts live in `vocab-essays/js/`, and prerecorded readings live in `vocab-essays/audio/`. No build step, no package manager, no framework.
+WordTales is a static, framework-free vocabulary learning app. The default route is an FSRS-powered single-card study flow; the original article library remains available at `#library` and column hashes. It contains 897 source occurrences mapped to 892 canonical learning entries across 7 sets and 28 columns.
+
+There is no build step. The official `ts-fsrs` UMD bundle is checked into `vocab-essays/vendor/ts-fsrs/`, so the app stays offline- and `file://`-compatible.
 
 ## Commands
 
 ```bash
-# Start local dev server
 python3 -m http.server 8000
-
-# Open in browser (after starting server)
-# http://localhost:8000/vocab-essays/vocab-essays.html
-
-# Alternatively, open the HTML file directly in a browser — it works offline.
+node scripts/check-integrity.js
 ```
 
-There is no `package.json`, no lint/format/test commands, and no build step. Manual smoke-testing is the verification method (see README for checklist).
+Open `http://localhost:8000/vocab-essays/vocab-essays.html` or open that HTML file directly.
 
-## Architecture
+## Script order and architecture
 
-All JavaScript lives in the global namespace `WordTales`. The HTML loads these classic scripts with `defer`, in dependency order: `namespace.js`, `data.js`, `renderer.js`, `learning-progress.js`, then `features.js`. The init sequence is:
+Classic scripts use `defer` and must remain in this dependency order:
 
+```text
+vendor/ts-fsrs/index.umd.js
+→ js/namespace.js
+→ js/data.js
+→ js/renderer.js
+→ js/learning-progress-v2.js
+→ js/study-session.js
+→ js/features.js
 ```
-DOMContentLoaded → WordTales.App.init
-```
 
-That single call chains: render → initialize interactive modules → activate first vocab set → hydrate the learning profile from IndexedDB and migrate legacy localStorage data.
-
-### Namespace layers
+All application APIs live under `WordTales`.
 
 | Layer | File | Role |
-|---|---|---|
-| `WordTales.Data` | `vocab-essays/js/data.js` | Immutable vocab data (7 sets, 28 columns, 897 words, 132 paragraphs), plus lookup indexes (`setMap`, `columnMap`, `wordMap`, `paragraphMap`). Also exposes `addWords()`, `addParagraphs()`, `addSet()` for programmatic content extension. |
-| `WordTales.Renderer` | `vocab-essays/js/renderer.js` | Generates all DOM from data: set switcher buttons, TOC nav links, column sections with word cards and essay paragraphs. Escapes HTML via `escapeHtml()`. |
-| `WordTales.LearningProgress` | `vocab-essays/js/learning-progress.js` | Persists learning events and profiles, schedules reviews, and renders progress views. |
-| `WordTales.Features` | `vocab-essays/js/features.js` | Keeps the existing interactive modules inside one closure and exposes their stable top-level `WordTales.*` references. |
+| --- | --- | --- |
+| `Data` | `js/data.js` | Immutable content, source-occurrence indexes, canonical-entry mapping, context and source-order APIs. |
+| `Renderer` | `js/renderer.js` | Escapes content and renders the legacy article/library DOM. |
+| `LearningProgress` | `js/learning-progress-v2.js` | FSRS-6 scheduling, IndexedDB/localStorage persistence, v1 migration, idempotent events and canonical star state. |
+| `StudySession` | `js/study-session.js` | 20-card rounds, 40-new/day cap, due/new interleaving, card state machine, recovery, summaries and article-review routing. |
+| Features/App | `js/features.js` | Routing plus article reading, audio, cards, progress panel, games, copy practice and analysis. |
 
-### Feature sub-modules (all under `WordTales.*`)
+The old `js/learning-progress.js` is not loaded; it remains only as historical reference. Do not modify it for active behavior.
 
-- **`Navigation`** — `switchSet()`: toggles visible vocab set, rebuilds sticky TOC, updates stats, cancels any in-progress TTS reading.
-- **`Reader`** — Uses prerecorded MP3 plus static word cues when a column has `audio` metadata; otherwise uses speech synthesis with utterance-boundary highlighting. It also handles playback cleanup and recorded-audio fallback.
-- **`WordPopup`** — Click a highlighted word in an essay → lookup via `data-vocab-id` → show POS/meaning popover + play pronunciation via SpeechSynthesis.
-- **`Progress`** — Reads/writes `localStorage.starredWords`; syncs star state across main page and game.
-- **`LearningProgress`** — Tracks word/card/game/article/analysis activity, schedules spaced reviews, and renders daily recommendations plus the four-state memory heatmap.
-- **`Game`** — Full-screen drag-to-classify game. Floating word cards driven by `requestAnimationFrame`. Drag into "known" or "unknown" buckets; unknown words get starred.
-- **`CopyPractice`** — Spelling practice filtered to starred words in the current column. Desktop: keyboard input. Mobile/tablet: horizontal-scroll Canvas handwriting board.
-- **`Analysis`** — Toggles essay paragraphs to show Chinese translation + grammar notes with `<span class="keyword">` highlights.
-- **`Cards`** — 3D card flip (CSS `transform`), bulk flip toolbar, entry points to Game and CopyPractice.
-- **`App`** — `init()` orchestrates the startup sequence; also exposes `WordTales.App.init` for programmatic re-init.
+## Core invariants
 
-### Data model
+- Empty hash and `#study` activate the study home. `#library`, set hashes, column hashes and changelog hashes activate the legacy library.
+- Canonical learning state is keyed by entry ID, not English text or occurrence ID.
+- `Data.resolveEntryId(occurrenceId)` is the only occurrence-to-entry conversion path.
+- `isStarred` in the v2 profile is authoritative. `localStorage.starredWords` is a compatibility mirror only.
+- Ratings are `Good`, `Hard` and `Again`; do not merge Good and Hard.
+- `Again` must not return in an ordinary round on the same local day.
+- Every rating is committed immediately with an idempotent submission ID.
+- An unfinished round is immutable and resumes across refreshes or date changes.
+- Article auto-highlighting and automatic exposure do not create learning records.
+- Speech failures must never block rating or navigation.
 
-```
-set → column → { words, paragraphs }
-                   │         └── segments[] (string | { vocabId, text })
-                   └── { id, word, pos, meaning }
-```
+## Canonical data mapping
 
-Three integrity rules when editing content:
-1. All `id` fields must be globally unique across sets/columns/words/paragraphs.
-2. Paragraph segment `vocabId` values must reference real word IDs in the same column.
-3. `analysis` objects live alongside paragraphs; `points` may contain `<span class="keyword">` markup for emphasis (everything else is HTML-escaped).
+The expected count is exactly 897 occurrences → 892 entries. These five aliases are intentional:
 
-## Content-authoring skill
+- `s6col2-radiate` → `s1col1-radiate`
+- `s6col4-proximity` → `s1col1-proximity`
+- `s6col3-barren` → `s1col1-barren`
+- `s3col5-inferior` → `s2col2-inferior`
+- `s6col4-discern` → `s4col3-discern`
 
-`.trae/skills/vocab-essay/SKILL.md` defines a workflow for generating new vocab sets from images of handwritten word lists. The pipeline: image → OCR word lists → write themed essays → build HTML. Use this when the user wants to add new vocabulary content from a photo.
+The two meanings of `brisk` must remain distinct entries.
 
-## Changelog
+## Content integrity
 
-The `<template id="changelog-tpl">` in the HTML file is the canonical update log, displayed to users as "第八份：更新日志". After making a non-trivial change (feature, refactor, notable fix), append an entry there under the appropriate version heading — or create a new version heading if the change warrants it.
+The source model is `set → column → words / paragraphs`; paragraph segments are strings or `{ vocabId, text }` objects.
 
-**When to create a new version entry:**
+1. Set, column, occurrence and paragraph IDs must stay unique.
+2. Every segment `vocabId` must reference an occurrence from the same column.
+3. Every canonical entry must have at least one complete context sentence and stable source order.
+4. Audio cues must keep a one-to-one relationship with runtime essay tokens.
+5. When adding content, preserve the 897/892 expectations only if the source corpus is unchanged; otherwise update the integrity assertions deliberately.
 
-- **大版本 (major)** — a new capability category or fundamental architectural shift (e.g. learning system, audio recording, game mode). Bump the major number and reset minor: v2.0 → v2.1 for a follow-up major feature, or v2.0 → v3.0 for a paradigm shift.
-- **小版本 (minor)** — feature additions, polish waves, or accumulated fixes within the current major version. Bump the minor number: v2.1 → v2.2.
-- Individual hotfix commits don't need their own entry — batch them into the next minor version.
+## Persistence
 
-**Format:** Each version block is a `.changelog-version` div with an `<h3>` heading containing the version number and a `<span class="cv-badge major|minor">`, followed by `.cv-date`, a `.cv-desc` summary paragraph, and a `<ul>` of concrete changes. Follow the existing Chinese-language style.
+IndexedDB database `wordtales-learning` stores the profile and append-only events. v1 and old textual stars are migration inputs. When IndexedDB is unavailable, the app falls back to localStorage without blocking the learning flow.
 
-## Deployment
+Migration must remain repeatable and non-destructive. Never clear existing profiles as part of a schema change.
 
-GitHub Actions (`.github/workflows/jekyll-gh-pages.yml`) deploys on push to `main`: copies `vocab-essays/vocab-essays.html` to `_site/index.html`, includes the `css/`, `js/`, and `audio/` directories, and publishes to GitHub Pages. Despite the workflow filename, no Jekyll processing runs.
+## Changelog and deployment
 
-## Tech constraints
+`<template id="changelog-tpl">` in `vocab-essays.html` is the user-facing changelog. Add an entry for meaningful feature or architecture changes.
 
-- **HTML Audio + Web Speech API** — All current columns use bundled MP3 files and static cues. Future unrecorded columns and individual word pronunciation remain browser/OS-dependent; recorded audio falls back to speech synthesis if loading fails.
-- **Canvas 2D** — used only for mobile handwriting in CopyPractice.
-- **IndexedDB** — `wordtales-learning` stores the learning profile and append-only event records asynchronously.
-- **localStorage** — `starredWords` remains for star compatibility; `wordtales.learning.v1` is now only a migration source and IndexedDB fallback.
-- **CSS** — `vocab-essays/css/styles.css` uses custom properties (defined on `:root`), 3D transforms for card flips, `position: sticky` for TOC, media queries for responsive layout, and print styles.
-- **No external fonts loaded at runtime** — the CSS specifies `Lora`, `WorkSans`, etc. but these are expected to be system-installed or unavailable; fallback stacks are provided.
+GitHub Pages deploys the static HTML plus `css/`, `js/`, `audio/`, `vendor/` and README. Keep the workflow in sync with any new required static directory.
+
+## Verification checklist
+
+Run `node scripts/check-integrity.js`, syntax-check edited scripts, and check `git diff --check`. Browser smoke tests should cover:
+
+- default study route and legacy deep links;
+- Good, Hard and Again answer pages;
+- persistence and refresh recovery;
+- 20-card summary and next-round generation;
+- audio activation/reset behavior;
+- article review highlights;
+- unified stars in game, copy practice and progress;
+- desktop, 390 px viewport, local server and `file://` startup.

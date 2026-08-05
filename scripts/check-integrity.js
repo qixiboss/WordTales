@@ -16,11 +16,13 @@ const html = fs.readFileSync(htmlPath, 'utf8');
 const errors = [];
 
 const expectedScripts = [
-  'js/namespace.js',
-  'js/data.js',
-  'js/renderer.js',
-  'js/learning-progress.js',
-  'js/features.js'
+  'vendor/ts-fsrs/index.umd.js?v=5.4.1',
+  'js/namespace.js?v=3.0.0',
+  'js/data.js?v=3.0.0',
+  'js/renderer.js?v=3.0.0',
+  'js/learning-progress-v2.js?v=3.0.4',
+  'js/study-session.js?v=3.0.3',
+  'js/features.js?v=3.0.1'
 ];
 const scriptTags = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 const scripts = scriptTags.map((match) => {
@@ -111,6 +113,8 @@ if (markerIndex !== -1) {
 
 const ids = new Map();
 const totals = { sets: sets.length, columns: 0, words: 0, paragraphs: 0, audioColumns: 0 };
+const allWordIds = new Set();
+const referencedWordIds = new Set();
 
 // 所有实体共用一个 ID 空间，因为渲染后的 DOM 和查询索引也依赖全局唯一性。
 function registerId(id, type) {
@@ -191,6 +195,7 @@ sets.forEach((set, setIndex) => {
       totals.words += 1;
       registerId(word.id, `word ${wordIndex + 1} in ${column.id}`);
       localWordIds.add(word.id);
+      allWordIds.add(word.id);
       ['word', 'pos', 'meaning'].forEach((field) => {
         if (typeof word[field] !== 'string' || !word[field].trim()) {
           errors.push(`Word "${word.id}" is missing "${field}".`);
@@ -209,6 +214,7 @@ sets.forEach((set, setIndex) => {
           if (segment && typeof segment === 'object' && !localWordIds.has(segment.vocabId)) {
             errors.push(`Paragraph "${paragraph.id}" references non-local word "${segment.vocabId}".`);
           }
+          if (segment && typeof segment === 'object') referencedWordIds.add(segment.vocabId);
         });
       }
       if (!paragraph.analysis || typeof paragraph.analysis.translation !== 'string' ||
@@ -218,6 +224,92 @@ sets.forEach((set, setIndex) => {
     });
   });
 });
+
+allWordIds.forEach((id) => {
+  if (!referencedWordIds.has(id)) errors.push(`Word "${id}" has no article context.`);
+});
+
+const canonicalAliases = {
+  's6col2-radiate': 's1col1-radiate',
+  's6col4-proximity': 's1col1-proximity',
+  's6col3-barren': 's1col1-barren',
+  's3col5-inferior': 's2col2-inferior',
+  's6col4-discern': 's4col3-discern'
+};
+Object.entries(canonicalAliases).forEach(([occurrenceId, entryId]) => {
+  if (!allWordIds.has(occurrenceId) || !allWordIds.has(entryId)) {
+    errors.push(`Invalid canonical entry alias: ${occurrenceId} -> ${entryId}.`);
+  }
+});
+const canonicalCount = totals.words - Object.keys(canonicalAliases).length;
+if (canonicalCount !== 892) errors.push(`Expected 892 canonical entries, found ${canonicalCount}.`);
+
+try {
+  const dataSandbox = { WordTales: {} };
+  vm.createContext(dataSandbox);
+  new vm.Script(dataSource, { filename: 'js/data.js' }).runInContext(dataSandbox);
+  const canonicalEntries = dataSandbox.WordTales.Data.getAllEntries();
+  const contextCount = canonicalEntries.reduce((sum, entry) => sum + entry.contexts.length, 0);
+  if (canonicalEntries.length !== 892) {
+    errors.push(`Data API returned ${canonicalEntries.length} canonical entries instead of 892.`);
+  }
+  if (contextCount !== 897) errors.push(`Expected 897 canonical contexts, found ${contextCount}.`);
+  canonicalEntries.forEach((entry, index) => {
+    if (!entry.contexts.length || entry.contexts.some((context) => !context.sentence.trim())) {
+      errors.push(`Canonical entry "${entry.id}" has no usable context sentence.`);
+    }
+    if (index > 0 && entry.sourceOrder <= canonicalEntries[index - 1].sourceOrder) {
+      errors.push(`Canonical source order is not stable at "${entry.id}".`);
+    }
+  });
+  Object.entries(canonicalAliases).forEach(([occurrenceId, entryId]) => {
+    if (dataSandbox.WordTales.Data.resolveEntryId(occurrenceId) !== entryId) {
+      errors.push(`Data API did not resolve ${occurrenceId} to ${entryId}.`);
+    }
+  });
+  const briskEntries = canonicalEntries.filter((entry) => entry.word.toLowerCase() === 'brisk');
+  if (briskEntries.length !== 2 || briskEntries[0].id === briskEntries[1].id) {
+    errors.push('The two meanings of "brisk" must remain separate canonical entries.');
+  }
+} catch (error) {
+  errors.push(`Unable to verify canonical Data APIs: ${error.message}`);
+}
+
+try {
+  const fsrsSource = fs.readFileSync(path.resolve(path.dirname(htmlPath), 'vendor/ts-fsrs/index.umd.js'), 'utf8');
+  const sandbox = {};
+  vm.createContext(sandbox);
+  new vm.Script(fsrsSource).runInContext(sandbox);
+  if (!sandbox.FSRS || !/FSRS-6\.0/.test(String(sandbox.FSRS.FSRSVersion))) {
+    errors.push('Bundled ts-fsrs does not report FSRS-6.0.');
+  } else {
+    const scheduler = sandbox.FSRS.fsrs({
+      request_retention: 0.9,
+      maximum_interval: 36500,
+      enable_fuzz: false,
+      enable_short_term: false,
+      learning_steps: [],
+      relearning_steps: []
+    });
+    const now = new Date('2026-08-05T12:00:00.000Z');
+    const intervals = ['Again', 'Hard', 'Good'].map((rating) => {
+      return scheduler.next(
+        sandbox.FSRS.createEmptyCard(now),
+        now,
+        sandbox.FSRS.Rating[rating]
+      ).card.scheduled_days;
+    });
+    if (!(intervals[0] >= 1 && intervals[0] < intervals[1] && intervals[1] < intervals[2])) {
+      errors.push(`Expected distinct Again < Hard < Good intervals, found ${intervals.join(', ')}.`);
+    }
+  }
+} catch (error) {
+  errors.push(`Unable to verify bundled FSRS: ${error.message}`);
+}
+
+const sessionSource = fs.readFileSync(path.resolve(path.dirname(htmlPath), 'js/study-session.js'), 'utf8');
+if (!/var ROUND_LIMIT = 20;/.test(sessionSource)) errors.push('Study round limit must remain 20.');
+if (!/var DAILY_NEW_LIMIT = 40;/.test(sessionSource)) errors.push('Daily new-word limit must remain 40.');
 
 // 汇总全部错误后一次性退出，维护者不必反复修一个、跑一次。
 if (errors.length) {
@@ -229,6 +321,6 @@ if (errors.length) {
     `Integrity check passed: ${scripts.length} scripts, ` +
     `${totals.sets} sets, ${totals.columns} columns, ` +
     `${totals.words} words, ${totals.paragraphs} paragraphs, ` +
-    `${totals.audioColumns} recorded columns.`
+    `${totals.audioColumns} recorded columns, ${canonicalCount} canonical entries.`
   );
 }
