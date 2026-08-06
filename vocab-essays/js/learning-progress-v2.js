@@ -16,6 +16,7 @@ WordTales.LearningProgress = (function() {
   var saveTimer = null;
   var overlay = null;
   var panel = null;
+  var dashboardPreviousFocus = null;
   var articleObserver = null;
   var columnIndex = Object.create(null);
   var paragraphIndex = Object.create(null);
@@ -361,7 +362,8 @@ WordTales.LearningProgress = (function() {
     return window.FSRS.Rating.Again;
   }
   function rateWord(id, rating, meta, submissionId) {
-    if (!ready) return new Promise(function(resolve) { pending.push(function() { rateWord(id, rating, meta, submissionId).then(resolve); }); });
+    if (['Good', 'Hard', 'Again'].indexOf(rating) < 0) return Promise.reject(new TypeError('Unsupported learning rating: ' + rating));
+    if (!ready) return new Promise(function(resolve, reject) { pending.push(function() { rateWord(id, rating, meta, submissionId).then(resolve, reject); }); });
     var entryId = WordTales.Data.resolveEntryId(id);
     var entry = WordTales.Data.getEntry(entryId);
     if (!entry) return Promise.resolve(null);
@@ -575,16 +577,41 @@ WordTales.LearningProgress = (function() {
   }
   function buildDashboard() {
     overlay = document.createElement('div'); overlay.className = 'progress-overlay'; overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-label', '学习进度');
-    panel = document.createElement('div'); panel.className = 'progress-panel'; overlay.appendChild(panel); overlay.addEventListener('mousedown', function(event) { if (event.target === overlay) closeDashboard(); }); document.body.appendChild(overlay);
+    overlay.setAttribute('tabindex', '-1');
+    panel = document.createElement('div'); panel.className = 'progress-panel'; overlay.appendChild(panel); overlay.addEventListener('mousedown', function(event) { if (event.target === overlay) closeDashboard(); }); overlay.addEventListener('keydown', handleDashboardKeydown); document.body.appendChild(overlay);
   }
   function setBackgroundInert(inert) {
-    ['studyHome', 'dailyReminder', 'appContent', 'toc', 'setSwitcher'].forEach(function(id) { var element = document.getElementById(id); if (element) element.inert = inert; });
+    document.querySelectorAll('#studyHome, .library-view').forEach(function(element) { element.inert = inert; });
+  }
+  function dashboardFocusables() {
+    if (!overlay) return [];
+    return Array.prototype.filter.call(overlay.querySelectorAll('button, select, [href], [tabindex]:not([tabindex="-1"])'), function(element) {
+      return !element.disabled && element.getClientRects().length > 0;
+    });
+  }
+  function handleDashboardKeydown(event) {
+    if (!overlay || !overlay.classList.contains('active')) return;
+    if (event.key === 'Escape') { event.preventDefault(); closeDashboard(); return; }
+    if (event.key !== 'Tab') return;
+    var focusables = dashboardFocusables();
+    if (!focusables.length) { event.preventDefault(); overlay.focus(); return; }
+    var first = focusables[0]; var last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }
   function openDashboard() {
     if (!ready) { pending.push(openDashboard); return; }
-    if (!overlay) buildDashboard(); renderDashboard(); overlay.classList.add('active'); setBackgroundInert(true); document.body.style.overflow = 'hidden';
+    if (!overlay) buildDashboard();
+    dashboardPreviousFocus = document.activeElement;
+    renderDashboard(); overlay.classList.add('active'); setBackgroundInert(true); document.body.style.overflow = 'hidden';
+    setTimeout(function() { if (!overlay || !overlay.classList.contains('active')) return; var focusables = dashboardFocusables(); (focusables[0] || overlay).focus(); }, 0);
   }
-  function closeDashboard() { if (!overlay) return; overlay.classList.remove('active'); setBackgroundInert(false); document.body.style.overflow = ''; }
+  function closeDashboard() {
+    if (!overlay || !overlay.classList.contains('active')) return;
+    overlay.classList.remove('active'); setBackgroundInert(false); document.body.style.overflow = '';
+    var previous = dashboardPreviousFocus; dashboardPreviousFocus = null;
+    if (previous && previous.isConnected && typeof previous.focus === 'function') previous.focus();
+  }
   function refreshOpenDashboard() { if (overlay && overlay.classList.contains('active')) renderDashboard(); }
   function observeArticles() {
     if (!('IntersectionObserver' in window)) return;

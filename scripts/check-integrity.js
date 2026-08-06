@@ -20,9 +20,9 @@ const expectedScripts = [
   'js/namespace.js?v=3.0.0',
   'js/data.js?v=3.0.0',
   'js/renderer.js?v=3.0.0',
-  'js/learning-progress-v2.js?v=3.0.4',
+  'js/learning-progress-v2.js?v=3.0.5',
   'js/study-session.js?v=3.0.3',
-  'js/features.js?v=3.0.1'
+  'js/features.js?v=3.0.2'
 ];
 const scriptTags = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 const scripts = scriptTags.map((match) => {

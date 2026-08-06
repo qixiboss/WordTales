@@ -68,6 +68,7 @@ container.setAttribute('aria-modal', 'true');
 container.setAttribute('aria-label', label);
 container.setAttribute('tabindex', '-1');
 setTimeout(function(){
+if (_activeModal !== container || !container.isConnected) return;
 var focusables = getModalFocusables(container);
 (focusables[0] || container).focus();
 }, 0);
@@ -1765,6 +1766,7 @@ var copyLastX = 0;
 var copyLastY = 0;
 var copyOrientationHandler = null;
 var copyCanvasResizeHandler = null;
+var copyAdvanceTimer = null;
 
 /*
  * CopyPractice 只练当前专栏的星标词，形成“游戏暴露薄弱项 → 定向抄写”的闭环。
@@ -1962,10 +1964,15 @@ return;
 var typed = input.value.trim().toLowerCase();
 var target = copyWordList[copyIdx].toLowerCase();
 if (typed === target) {
+if (copyAdvanceTimer) return;
 input.classList.add('correct');
 input.classList.remove('wrong');
-setTimeout(function(){
+input.disabled = true;
+copyAdvanceTimer = setTimeout(function(){
+copyAdvanceTimer = null;
+if (!copyOverlay || copyOverlay._input !== input) return;
 copyIdx++;
+input.disabled = false;
 if (copyIdx >= copyWordList.length) {
 showCopyComplete(true);
 } else {
@@ -2146,10 +2153,10 @@ canvas._copyListeners = [
 { type: 'touchend', fn: onEnd, opts: { passive: false } }
 ];
 
-var _copyResizeTimer = null;
 copyCanvasResizeHandler = function() {
-if (_copyResizeTimer) clearTimeout(_copyResizeTimer);
-_copyResizeTimer = setTimeout(function() {
+if (copyCanvasResizeHandler._timer) clearTimeout(copyCanvasResizeHandler._timer);
+copyCanvasResizeHandler._timer = setTimeout(function() {
+copyCanvasResizeHandler._timer = null;
 if (!copyOverlay) return;
 // 改 canvas 尺寸会清空位图；调整前暂存像素，尽可能保留用户尚未写完的笔迹。
 var imgData = null;
@@ -2209,12 +2216,24 @@ copyOverlay.appendChild(box);
 
 function endCopy() {
 // 显式移除窗口和 Canvas 监听，避免多次进入练习后事件成倍触发。
+if (copyAdvanceTimer) {
+clearTimeout(copyAdvanceTimer);
+copyAdvanceTimer = null;
+}
 if (copyOrientationHandler) {
+if (copyOrientationHandler._timer) {
+clearTimeout(copyOrientationHandler._timer);
+copyOrientationHandler._timer = null;
+}
 window.removeEventListener('resize', copyOrientationHandler);
 window.removeEventListener('orientationchange', copyOrientationHandler);
 copyOrientationHandler = null;
 }
 if (copyCanvasResizeHandler) {
+if (copyCanvasResizeHandler._timer) {
+clearTimeout(copyCanvasResizeHandler._timer);
+copyCanvasResizeHandler._timer = null;
+}
 window.removeEventListener('resize', copyCanvasResizeHandler);
 copyCanvasResizeHandler = null;
 }
@@ -2596,10 +2615,10 @@ WordTales.StudySession.applyArticleHighlights();
 setTimeout(WordTales.StudySession.applyArticleHighlights, 0);
 }
 }
-window.addEventListener('hashchange', switchToHash);
 WordTales.LearningProgress.init().then(function(){
 WordTales.StudySession.init();
 WordTales.Progress.refresh();
+window.addEventListener('hashchange', switchToHash);
 switchToHash();
 });
 }
