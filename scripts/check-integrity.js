@@ -20,9 +20,8 @@ const expectedScripts = [
   'js/namespace.js?v=3.0.0',
   'js/data.js?v=3.0.0',
   'js/renderer.js?v=3.0.0',
-  'js/learning-progress-v2.js?v=3.0.5',
-  'js/study-session.js?v=3.0.3',
-  'js/features.js?v=3.0.2'
+  'js/learning-progress-v2.js?v=3.0.7',
+  'js/features.js?v=3.0.3'
 ];
 const scriptTags = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 const scripts = scriptTags.map((match) => {
@@ -306,10 +305,6 @@ try {
 } catch (error) {
   errors.push(`Unable to verify bundled FSRS: ${error.message}`);
 }
-
-const sessionSource = fs.readFileSync(path.resolve(path.dirname(htmlPath), 'js/study-session.js'), 'utf8');
-if (!/var ROUND_LIMIT = 20;/.test(sessionSource)) errors.push('Study round limit must remain 20.');
-if (!/var DAILY_NEW_LIMIT = 40;/.test(sessionSource)) errors.push('Daily new-word limit must remain 40.');
 
 // 汇总全部错误后一次性退出，维护者不必反复修一个、跑一次。
 if (errors.length) {

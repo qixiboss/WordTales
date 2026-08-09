@@ -7,35 +7,22 @@
 <meta name="description" content="通过主题短文、双面词卡、语音朗读和练习功能，在真实语境中学习和记忆英语词汇。">
 <title>词汇记忆短文集 · Vocabulary in Context</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235b7cfa'/%3E%3Ctext x='16' y='23' font-size='18' font-family='Georgia' fill='white' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/styles.css?v=3.0.2">
+<link rel="stylesheet" href="css/styles.css?v=3.0.5">
 </head>
-<body class="study-mode">
-<section class="study-home" id="studyHome" aria-label="单词学习">
-  <header class="study-topbar">
-    <a class="study-brand" href="#study" aria-label="WordTales 单词学习主页">
-      <span class="study-brand-mark" aria-hidden="true">W</span>
-      <span>WordTales</span>
-    </a>
-    <div class="study-top-actions">
-      <button type="button" class="study-top-link progress-entry" id="studyProgressEntry">学习进度</button>
-      <a class="study-top-link" href="#library">文章学习 <span aria-hidden="true">↗</span></a>
-    </div>
-  </header>
-  <div class="study-stage" id="studyStage" aria-live="polite">
-    <div class="study-loading" role="status"><span></span><p>正在恢复你的学习计划…</p></div>
-  </div>
-</section>
+<body>
 <header class="cover library-view">
-  <a class="library-back-study" href="#study">返回背词</a>
   <div class="cover-inner">
     <p class="kicker">Vocabulary in Context</p>
     <h1>词汇记忆短文集</h1>
     <div class="set-switcher" id="setSwitcher"></div>
     <p class="set-meta" id="setMeta" aria-live="polite"></p>
-    <button type="button" class="progress-entry" id="progressEntry">
-      <span class="progress-entry-dot" aria-hidden="true"></span>
-      今日学习进度
-    </button>
+    <div class="cover-actions">
+      <button type="button" class="progress-entry" id="progressEntry">
+        <span class="progress-entry-dot" aria-hidden="true"></span>
+        今日学习进度
+      </button>
+      <div class="accent-control" id="accentControl" role="group" aria-label="发音音色"></div>
+    </div>
   </div>
 </header>
 <nav class="toc library-view" id="toc" aria-label="栏目目录"></nav>
@@ -46,6 +33,29 @@
   <div class="changelog-head">
     <h2>第八份：更新日志</h2>
     <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v3.3 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-08-09</div>
+    <div class="cv-desc"><strong>文章学习重新成为默认主页。</strong>移除独立单卡背词会话，保留文章词卡、学习进度、游戏、抄写、朗读和解析，并修复栏目目录首次点击定位不准的问题。</div>
+    <ul>
+      <li>空地址和旧背词链接统一进入文章主页，已有学习档案继续保留</li>
+      <li>美音/英音切换迁移到文章页头部，文章点读和朗读降级继续共用该偏好</li>
+      <li>栏目跳转使用真实布局高度，第一次点击即可准确到达目标列</li>
+    </ul>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v3.2 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-08-06</div>
+    <div class="cv-desc"><strong>评分可以返回与改判。</strong>点错评分不再需要等下次复习——答案页可以撤销评分重新选择，也可以回到上一张改判；提示页可以返回重新回忆；一轮结束后可以直接重练没想起的词。</div>
+    <ul>
+      <li>答案页新增「撤销评分」，可反复改判，以最后一次选择重新调度复习时间</li>
+      <li>答案页新增「上一张」，可回到本轮已评过的单词改判</li>
+      <li>提示页新增「返回」，可以放弃提示重新独立回忆</li>
+      <li>一轮总结新增「重练本轮没想起的词」，错词可立即再刷一遍</li>
+    </ul>
   </div>
 
   <div class="changelog-version">
@@ -194,10 +204,8 @@
 
 <script defer src="js/renderer.js?v=3.0.0"></script>
 
-<script defer src="js/learning-progress-v2.js?v=3.0.5"></script>
+<script defer src="js/learning-progress-v2.js?v=3.0.7"></script>
 
-<script defer src="js/study-session.js?v=3.0.3"></script>
-
-<script defer src="js/features.js?v=3.0.2"></script>
+<script defer src="js/features.js?v=3.0.3"></script>
 </body>
 </html>

@@ -434,9 +434,9 @@ return value === 'uk' ? 'uk' : 'us';
 function setAccent(accent) {
 accent = accent === 'uk' ? 'uk' : 'us';
 try { localStorage.setItem(ACCENT_KEY, accent); } catch (e) {}
-var container = document.querySelector('.study-accent');
+var container = document.querySelector('.accent-control');
 if (container) {
-container.querySelectorAll('.study-accent-opt').forEach(function(btn){
+container.querySelectorAll('.accent-opt').forEach(function(btn){
 var active = btn.dataset.accent === accent;
 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
 btn.classList.toggle('active', active);
@@ -2538,27 +2538,22 @@ head.appendChild(copyBtn);
 }
 
 function initAccentControl() {
-// 在背书顶部栏注入美音/英音切换，幂等保护防止重复绑定。
-var container = document.querySelector('.study-top-actions');
-if (!container || container.querySelector('.study-accent')) return;
+// 在文章页头部注入美音/英音切换，幂等保护防止重复绑定。
+var container = document.getElementById('accentControl');
+if (!container || container.querySelector('.accent-opt')) return;
 var accent = getAccent();
-var group = document.createElement('div');
-group.className = 'study-accent';
-group.setAttribute('role', 'group');
-group.setAttribute('aria-label', '发音音色');
 [['us', '美音'], ['uk', '英音']].forEach(function(pair){
 var btn = document.createElement('button');
 btn.type = 'button';
-btn.className = 'study-accent-opt';
+btn.className = 'accent-opt';
 btn.dataset.accent = pair[0];
 btn.textContent = pair[1];
 var active = accent === pair[0];
 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
 btn.classList.toggle('active', active);
 btn.addEventListener('click', function(){ setAccent(pair[0]); });
-group.appendChild(btn);
+container.appendChild(btn);
 });
-container.appendChild(group);
 }
 
 function init() {
@@ -2578,18 +2573,20 @@ targetId = window.location.hash ? decodeURIComponent(window.location.hash.slice(
 } catch (e) {
 targetId = window.location.hash.slice(1);
 }
-if (!targetId || targetId === 'study') {
-WordTales.StudySession.activate();
+if (targetId === 'study') {
+// 已发布的旧链接仍可打开，但不再保留已移除的背词路由。
+try {
+window.history.replaceState(null, '', window.location.href.split('#')[0] + '#library');
+} catch (e) {
+window.location.hash = 'library';
 return;
 }
-WordTales.StudySession.deactivate();
-document.body.classList.remove('study-mode');
-document.body.classList.add('library-mode');
+targetId = '';
+}
 if (targetId === 'library') targetId = '';
 if (targetId === 'changelog') {
 var changelogBtn = document.querySelector('.set-btn[data-set="changelog"]');
 WordTales.Navigation.switchSet('changelog', changelogBtn);
-setTimeout(WordTales.StudySession.applyArticleHighlights, 0);
 return;
 }
 // hash 可以指向词集或专栏；先反查所属词集，切换后再滚动到具体专栏。
@@ -2609,14 +2606,10 @@ WordTales.Navigation.switchSet(targetSet.id, targetButton);
 if (targetId && document.getElementById(targetId)) {
 requestAnimationFrame(function(){
 document.getElementById(targetId).scrollIntoView({ block: 'start' });
-WordTales.StudySession.applyArticleHighlights();
 });
-} else {
-setTimeout(WordTales.StudySession.applyArticleHighlights, 0);
 }
 }
 WordTales.LearningProgress.init().then(function(){
-WordTales.StudySession.init();
 WordTales.Progress.refresh();
 window.addEventListener('hashchange', switchToHash);
 switchToHash();

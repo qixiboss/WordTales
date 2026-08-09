@@ -559,10 +559,10 @@ WordTales.LearningProgress = (function() {
     var learned = Object.keys(load().words).filter(function(id) { return !!WordTales.Data.getEntry(id); });
     var probabilities = learned.map(function(id) { return recallProbability(id); }).filter(function(value) { return value != null; });
     var average = probabilities.length ? probabilities.reduce(function(sum, value) { return sum + value; }, 0) / probabilities.length : null;
-    panel.innerHTML = '<div class="progress-panel-head"><div><p class="progress-eyebrow">FSRS learning pulse</p><h2>你的学习进度</h2><p class="progress-date">到期时间按当前时刻计算 · ' + (persistenceMode === 'indexedDB' ? 'IndexedDB 已保存' : '本地存储降级模式') + '</p></div><button type="button" class="progress-close" aria-label="关闭进度面板">×</button></div>' +
+    panel.innerHTML = '<div class="progress-panel-head"><div><p class="progress-eyebrow">Article learning pulse</p><h2>你的学习进度</h2><p class="progress-date">到期时间按当前时刻计算 · ' + (persistenceMode === 'indexedDB' ? 'IndexedDB 已保存' : '本地存储降级模式') + '</p></div><button type="button" class="progress-close" aria-label="关闭进度面板">×</button></div>' +
       '<div class="progress-kpis"><div class="progress-kpi"><div class="progress-kpi-value">' + learned.length + '</div><div class="progress-kpi-label">已进入学习计划</div></div><div class="progress-kpi"><div class="progress-kpi-value">' + due.length + '</div><div class="progress-kpi-label">当前已到期</div></div><div class="progress-kpi"><div class="progress-kpi-value">' + formatPercent(average) + '</div><div class="progress-kpi-label">FSRS 平均回忆率</div></div><div class="progress-kpi"><div class="progress-kpi-value">' + getStarredEntryIds().length + '</div><div class="progress-kpi-label">当前生词</div></div></div>' +
       '<section class="progress-section"><div class="progress-section-head"><div><h3>到期栏目</h3><p class="progress-section-note">逾期越久、遗忘越多的词优先</p></div></div><div class="progress-plan-card"><ul class="progress-plan-list column-plan-list" id="duePlan"></ul></div></section>' +
-      '<section class="progress-section"><div class="progress-section-head"><div><h3>记忆热力图</h3><p class="progress-section-note">基于 FSRS 当前回忆概率</p></div><div class="heatmap-controls"><label for="heatmapSet">词集</label><select id="heatmapSet"></select></div></div><div class="memory-legend"><span><i class="memory-dot green"></i>稳定</span><span><i class="memory-dot yellow"></i>即将到期</span><span><i class="memory-dot red"></i>已到期或遗忘</span><span><i class="memory-dot gray"></i>未学习</span></div><div class="memory-heatmap" id="memoryHeatmap"></div><p class="progress-footnote">评分使用 FSRS-6：我认识为 Good，提示后想起为 Hard，没想起来为 Again。数据仅保存在当前浏览器。</p></section>';
+      '<section class="progress-section"><div class="progress-section-head"><div><h3>记忆热力图</h3><p class="progress-section-note">基于 FSRS 当前回忆概率</p></div><div class="heatmap-controls"><label for="heatmapSet">词集</label><select id="heatmapSet"></select></div></div><div class="memory-legend"><span><i class="memory-dot green"></i>稳定</span><span><i class="memory-dot yellow"></i>即将到期</span><span><i class="memory-dot red"></i>已到期或遗忘</span><span><i class="memory-dot gray"></i>未学习</span></div><div class="memory-heatmap" id="memoryHeatmap"></div><p class="progress-footnote">文章点读和词卡翻面记录学习接触；游戏中的熟悉与不熟悉会更新 FSRS 复习状态。数据仅保存在当前浏览器。</p></section>';
     panel.querySelector('.progress-close').addEventListener('click', closeDashboard);
     var list = panel.querySelector('#duePlan');
     if (!grouped.length) { var empty = document.createElement('li'); empty.className = 'progress-empty'; empty.textContent = '当前没有已到期单词。'; list.appendChild(empty); }
@@ -581,7 +581,7 @@ WordTales.LearningProgress = (function() {
     panel = document.createElement('div'); panel.className = 'progress-panel'; overlay.appendChild(panel); overlay.addEventListener('mousedown', function(event) { if (event.target === overlay) closeDashboard(); }); overlay.addEventListener('keydown', handleDashboardKeydown); document.body.appendChild(overlay);
   }
   function setBackgroundInert(inert) {
-    document.querySelectorAll('#studyHome, .library-view').forEach(function(element) { element.inert = inert; });
+    document.querySelectorAll('.library-view').forEach(function(element) { element.inert = inert; });
   }
   function dashboardFocusables() {
     if (!overlay) return [];
