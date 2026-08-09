@@ -434,14 +434,6 @@ return value === 'uk' ? 'uk' : 'us';
 function setAccent(accent) {
 accent = accent === 'uk' ? 'uk' : 'us';
 try { localStorage.setItem(ACCENT_KEY, accent); } catch (e) {}
-var container = document.querySelector('.accent-control');
-if (container) {
-container.querySelectorAll('.accent-opt').forEach(function(btn){
-var active = btn.dataset.accent === accent;
-btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-btn.classList.toggle('active', active);
-});
-}
 return accent;
 }
 
@@ -2537,32 +2529,12 @@ head.appendChild(copyBtn);
 });
 }
 
-function initAccentControl() {
-// 在文章页头部注入美音/英音切换，幂等保护防止重复绑定。
-var container = document.getElementById('accentControl');
-if (!container || container.querySelector('.accent-opt')) return;
-var accent = getAccent();
-[['us', '美音'], ['uk', '英音']].forEach(function(pair){
-var btn = document.createElement('button');
-btn.type = 'button';
-btn.className = 'accent-opt';
-btn.dataset.accent = pair[0];
-btn.textContent = pair[1];
-var active = accent === pair[0];
-btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-btn.classList.toggle('active', active);
-btn.addEventListener('click', function(){ setAccent(pair[0]); });
-container.appendChild(btn);
-});
-}
-
 function init() {
 /*
  * App 是唯一启动入口：先渲染，再根据 URL hash 激活正确词集并初始化该词集功能，
  * 最后恢复星标与异步学习档案。hashchange 复用同一路径以支持深链接和浏览器历史。
  */
 WordTales.Renderer.render();
-initAccentControl();
 document.querySelectorAll('.set-btn').forEach(function(btn){
 btn.addEventListener('click', function(){ WordTales.Navigation.switchSet(btn.dataset.set, btn); });
 });
@@ -2610,6 +2582,7 @@ document.getElementById(targetId).scrollIntoView({ block: 'start' });
 }
 }
 WordTales.LearningProgress.init().then(function(){
+WordTales.StudyRecord.init();
 WordTales.Progress.refresh();
 window.addEventListener('hashchange', switchToHash);
 switchToHash();

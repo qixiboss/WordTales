@@ -1256,7 +1256,7 @@ animation-iteration-count:1!important;
 transition-duration:.01ms!important;
 scroll-behavior:auto!important}
 }
-/* Learning progress dashboard */
+/* Study record table */
 .cover-actions {
 display:flex;
 align-items:center;
@@ -1264,7 +1264,7 @@ justify-content:center;
 gap:.55rem;
 margin-top:1.1rem;
 flex-wrap:wrap}
-.progress-entry {
+.record-entry {
 display:inline-flex;
 align-items:center;
 gap:.45rem;
@@ -1277,77 +1277,35 @@ color:#fff;
 font:600 .82rem var(--sans);
 cursor:pointer;
 transition:background .2s,transform .2s}
-.progress-entry:hover {
+.record-entry:hover {
 background:rgba(251,249,244,.22);
 transform:translateY(-1px)}
-.progress-entry:disabled {
+.record-entry:disabled {
 opacity:.65;
 cursor:wait}
-.progress-entry .progress-entry-dot {
-width:.55rem;
-height:.55rem;
+.record-entry-mark {
+display:inline-grid;
+place-items:center;
+width:1.15rem;
+height:1.15rem;
 border-radius:50%;
 background:#f1c75b;
-box-shadow:0 0 0 4px rgba(241,199,91,.15)}
-.accent-control {
-display:inline-flex;
-align-items:center;
-gap:2px;
-padding:3px;
-border:1px solid rgba(251,249,244,.5);
-border-radius:999px;
-background:rgba(251,249,244,.12)}
-.accent-opt {
-appearance:none;
-min-height:36px;
-padding:.3rem .65rem;
-border:0;
-border-radius:999px;
-background:transparent;
-color:rgba(251,249,244,.82);
-font:700 .7rem var(--sans);
+color:#5b4300;
+font-size:.72rem;
+font-weight:900;
 line-height:1;
-cursor:pointer}
-.accent-opt.active {
-background:#fbf9f4;
-color:var(--accent)}
-.accent-opt:hover:not(.active) {
-background:rgba(251,249,244,.12);
-color:#fff}
-.daily-reminder {
-max-width:860px;
-margin:1rem auto 0;
-padding:.85rem 1rem;
-border:1px solid #dbc99d;
-border-radius:14px;
-background:#fff8e7;
-color:#5f4b19;
-display:flex;
-align-items:center;
-gap:.8rem;
-box-shadow:0 8px 24px rgba(67,50,16,.08)}
-.daily-reminder[hidden] {
-display:none}
-.daily-reminder-copy {
-flex:1;
-font-size:.82rem}
-.daily-reminder-copy strong {
-display:block;
-color:#3e3216;
-font-size:.9rem}
-.daily-reminder button {
-border:0;
-border-radius:999px;
-padding:.45rem .8rem;
-background:#805d00;
-color:#fff;
-font:600 .75rem var(--sans);
-cursor:pointer}
-.daily-reminder .reminder-dismiss {
-background:transparent;
-color:#6f6555;
-padding:.35rem}
-.progress-overlay {
+box-shadow:0 0 0 4px rgba(241,199,91,.15)}
+.visually-hidden {
+position:absolute!important;
+width:1px!important;
+height:1px!important;
+padding:0!important;
+margin:-1px!important;
+overflow:hidden!important;
+clip:rect(0,0,0,0)!important;
+white-space:nowrap!important;
+border:0!important}
+.record-overlay {
 position:fixed;
 inset:0;
 z-index:12000;
@@ -1356,36 +1314,42 @@ align-items:stretch;
 justify-content:flex-end;
 background:rgba(20,27,29,.55);
 backdrop-filter:blur(5px)}
-.progress-overlay.active {
+.record-overlay.active {
 display:flex}
-.progress-panel {
-width:min(920px,100%);
+.record-panel {
+display:flex;
+flex-direction:column;
+width:min(1080px,100%);
 height:100%;
-overflow:auto;
+overflow:hidden;
 background:#f7f4ed;
 box-shadow:-24px 0 70px rgba(19,27,30,.22);
-padding:1.5rem clamp(1rem,3vw,2.4rem) 3rem}
-.progress-panel-head {
+padding:1.5rem clamp(1rem,3vw,2.4rem) 2rem}
+.record-panel-head {
 display:flex;
 align-items:flex-start;
 justify-content:space-between;
 gap:1rem;
 padding-bottom:1.2rem;
 border-bottom:1px solid var(--rule)}
-.progress-eyebrow {
+.record-heading {
+min-width:0}
+.record-eyebrow {
 color:var(--accent);
 font-size:.72rem;
 font-weight:800;
 letter-spacing:.16em;
 text-transform:uppercase}
-.progress-panel h2 {
+.record-panel h2 {
 font:700 clamp(1.65rem,4vw,2.35rem) var(--serif);
 line-height:1.2;
 margin:.25rem 0}
-.progress-date {
+.record-intro {
 color:var(--muted);
-font-size:.8rem}
-.progress-close {
+font-size:.8rem;
+line-height:1.55}
+.record-close {
+flex:0 0 auto;
 width:2.5rem;
 height:2.5rem;
 border:1px solid var(--rule);
@@ -1394,262 +1358,218 @@ background:#fff;
 color:var(--ink);
 font-size:1.25rem;
 cursor:pointer}
-.progress-kpis {
-display:grid;
-grid-template-columns:repeat(4,minmax(0,1fr));
-gap:.7rem;
-margin:1.2rem 0}
-.progress-kpi {
-min-height:104px;
-padding:1rem;
-border:1px solid var(--rule);
-border-radius:16px;
-background:#fff}
-.progress-kpi-value {
-font:700 1.8rem var(--serif);
+.record-close:hover {
+border-color:var(--accent);
 color:var(--accent)}
-.progress-kpi-label {
-font-size:.75rem;
-color:var(--muted)}
-.progress-section {
-margin-top:1.5rem}
-.progress-section-head {
+.record-toolbar {
 display:flex;
-align-items:end;
+align-items:center;
 justify-content:space-between;
-gap:1rem;
-margin-bottom:.75rem}
-.progress-section h3 {
-font:700 1.15rem var(--serif)}
-.progress-section-note {
-color:var(--muted);
-font-size:.74rem}
-.progress-plan-grid {
-display:grid;
-grid-template-columns:1fr;
-gap:.75rem}
-.progress-plan-card {
-border:1px solid var(--rule);
-border-radius:16px;
-background:#fff;
-padding:1rem;
-min-height:160px}
-.progress-plan-card h4 {
-font-size:.82rem;
-color:var(--muted);
-margin-bottom:.6rem}
-.progress-plan-list {
-list-style:none;
-display:grid;
-gap:.38rem}
-.column-plan-list {
-grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
-.progress-plan-item {
+gap:.8rem 1rem;
+padding:1rem 0}
+.record-month-controls {
 display:flex;
-align-items:center;
-gap:.5rem;
-width:100%;
-padding:.42rem .5rem;
-border:0;
-border-radius:9px;
-background:var(--bg);
-color:var(--ink);
-font:600 .76rem var(--sans);
-text-align:left;
-cursor:pointer}
-.progress-plan-item:hover {
-background:var(--accent-soft);
-color:var(--accent)}
-.progress-plan-item small {
-margin-left:auto;
-color:var(--muted);
-font-weight:500}
-.progress-empty {
-color:var(--muted);
-font-size:.77rem;
-line-height:1.7}
-.heatmap-controls {
-display:flex;
-align-items:center;
-gap:.5rem}
-.heatmap-controls select {
-border:1px solid var(--rule);
-border-radius:10px;
-background:#fff;
-padding:.42rem .65rem;
-color:var(--ink);
-font:600 .75rem var(--sans)}
-.memory-legend {
-display:flex;
-flex-wrap:wrap;
-gap:.5rem 1rem;
-margin:.65rem 0 .85rem;
-font-size:.72rem;
-color:var(--muted)}
-.memory-legend span {
-display:inline-flex;
 align-items:center;
 gap:.35rem}
-.memory-dot {
-width:.7rem;
-height:.7rem;
-border-radius:3px}
-.memory-dot.green,.memory-cell.green {background:#b9dfc4;color:#1c5732;border-color:#90c9a0}
-.memory-dot.yellow,.memory-cell.yellow {background:#f4dfa0;color:#6f5310;border-color:#dfc56e}
-.memory-dot.red,.memory-cell.red {background:#efb3ad;color:#782921;border-color:#d88e87}
-.memory-dot.gray,.memory-cell.gray {background:#e4e1da;color:#777168;border-color:#cfcbc2}
-.memory-heatmap {
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(76px,1fr));
-gap:.42rem;
-padding:.8rem;
+.record-nav-button,.record-today-button {
+min-width:2.35rem;
+height:2.35rem;
 border:1px solid var(--rule);
-border-radius:16px;
-background:#fff}
-.memory-cell {
-min-height:54px;
-padding:.45rem;
-border:1px solid;
-border-radius:10px;
-font:700 .68rem var(--sans);
-line-height:1.2;
-text-align:left;
-overflow:hidden;
+border-radius:999px;
+background:#fff;
+color:var(--ink);
+font:700 .8rem var(--sans);
 cursor:pointer}
-.memory-cell span {
-display:block;
-margin-top:.25rem;
-font-size:.58rem;
-font-weight:500;
-opacity:.8}
-.progress-footnote {
-margin-top:1rem;
+.record-nav-button {
+font-size:1.45rem;
+line-height:1}
+.record-today-button {
+padding:0 .8rem}
+.record-nav-button:hover:not(:disabled),.record-today-button:hover:not(:disabled) {
+border-color:var(--accent);
+color:var(--accent)}
+.record-nav-button:disabled,.record-today-button:disabled {
+opacity:.38;
+cursor:not-allowed}
+.record-month-label {
+font:700 1.05rem var(--serif);
+white-space:nowrap}
+.record-save-status {
+min-width:15rem;
 color:var(--muted);
+font-size:.74rem;
+line-height:1.4;
+text-align:right}
+.record-table-scroll {
+flex:1;
+min-height:0;
+overflow:auto;
+overscroll-behavior:contain;
+border:1px solid var(--rule);
+border-radius:15px;
+background:#fff}
+.record-table-scroll:focus-visible {
+outline:3px solid #0b74a5;
+outline-offset:3px}
+.record-table {
+width:100%;
+min-width:2320px;
+border-collapse:separate;
+border-spacing:0;
+table-layout:fixed;
+font-size:.76rem}
+.record-table th,.record-table td {
+height:54px;
+border-right:1px solid var(--rule);
+border-bottom:1px solid var(--rule)}
+.record-table tr:last-child th,.record-table tr:last-child td {
+border-bottom:0}
+.record-table th:last-child,.record-table td:last-child {
+border-right:0}
+.record-table thead th {
+position:sticky;
+top:0;
+z-index:3;
+height:60px;
+background:#f2eee5;
+color:var(--muted);
+text-align:center}
+.record-date-heading {
+width:70px;
+font-weight:600}
+.record-weekday {
+display:block;
+font-size:.65rem;
+font-weight:600}
+.record-day-number {
+display:block;
+color:var(--ink);
+font:700 1rem var(--serif)}
+.record-row-label {
+position:sticky;
+left:0;
+z-index:2;
+width:150px;
+padding:.55rem .7rem;
+background:#fff;
+text-align:left;
+box-shadow:1px 0 0 var(--rule)}
+.record-table thead .record-row-label {
+z-index:5;
+background:#eae4d8;
 font-size:.7rem;
-line-height:1.6}
-.vocab-card.progress-jump-float {
-z-index:30;
-animation:progressJumpFloat 1.55s cubic-bezier(.2,.8,.2,1)}
-@keyframes progressJumpFloat {
-0% {
-transform:translateY(0) scale(1);
-box-shadow:0 0 0 0 rgba(27,94,114,0)}
-24% {
-transform:translateY(-14px) scale(1.06);
-box-shadow:0 14px 28px rgba(27,94,114,.22),0 0 0 4px rgba(27,94,114,.2)}
-58% {
-transform:translateY(-7px) scale(1.025);
-box-shadow:0 9px 20px rgba(27,94,114,.16),0 0 0 3px rgba(27,94,114,.12)}
-100% {
-transform:translateY(0) scale(1);
-box-shadow:0 0 0 0 rgba(27,94,114,0)}
-}
+text-align:left}
+.record-row-number {
+display:block;
+color:var(--ink);
+font-weight:750;
+white-space:nowrap}
+.record-row-title {
+display:block;
+margin-top:.08rem;
+overflow:hidden;
+color:var(--muted);
+font-size:.62rem;
+font-weight:500;
+line-height:1.25;
+text-overflow:ellipsis;
+white-space:nowrap}
+.record-set-start:not(:first-child) th,.record-set-start:not(:first-child) td {
+border-top:2px solid #cbbfa9}
+.record-date-cell {
+padding:0;
+background:#fff}
+.record-date-today {
+background:#fff7df!important}
+.record-date-heading.record-date-today {
+color:var(--accent2);
+box-shadow:inset 0 3px 0 #e4b64b}
+.record-check {
+display:grid;
+place-items:center;
+width:100%;
+height:100%;
+min-height:54px;
+cursor:pointer}
+.record-check.disabled {
+cursor:not-allowed}
+.record-check.saving {
+cursor:progress}
+.record-check input {
+width:26px;
+height:26px;
+margin:0;
+accent-color:var(--accent);
+cursor:pointer;
+transition:transform .15s}
+.record-check input:hover:not(:disabled) {
+transform:scale(1.05)}
+.record-check input:disabled {
+cursor:not-allowed;
+opacity:.62}
+.record-check.saving input:disabled {
+cursor:progress}
 @media(max-width:700px) {
 .column-section {
 scroll-margin-top:100px}
 .cover-actions {
 margin-top:.85rem}
-.progress-entry {
+.record-entry {
 min-height:44px;
 padding:.52rem .9rem}
-.accent-opt {
-min-height:38px;
-padding:.3rem .58rem}
-.daily-reminder {
-margin:.7rem .75rem 0;
-padding:.8rem;
-align-items:center;
-flex-wrap:wrap;
-gap:.55rem}
-.daily-reminder-copy {
-flex:1 0 100%}
-.daily-reminder button {
-min-height:42px;
-padding:.5rem .9rem}
-.daily-reminder .reminder-dismiss {
-margin-left:auto;
-padding:.5rem .65rem}
-.progress-overlay {
+.record-overlay {
 align-items:flex-end}
-.progress-panel {
+.record-panel {
 width:100%;
 height:100dvh;
-padding:0 1rem calc(1.5rem + env(safe-area-inset-bottom));
+padding:0 .75rem calc(.75rem + env(safe-area-inset-bottom));
 overscroll-behavior:contain}
-.progress-panel-head {
-position:sticky;
-top:0;
-z-index:5;
-margin:0 -1rem;
-padding:calc(.85rem + env(safe-area-inset-top)) 1rem .85rem;
+.record-panel-head {
+margin:0 -.75rem;
+padding:calc(.8rem + env(safe-area-inset-top)) .85rem .8rem;
 background:rgba(247,244,237,.96);
 backdrop-filter:blur(12px)}
-.progress-panel h2 {
+.record-panel h2 {
 font-size:1.65rem}
-.progress-close {
+.record-intro {
+font-size:.72rem}
+.record-close {
 flex:0 0 44px;
 width:44px;
 height:44px}
-.progress-kpis {
-grid-template-columns:repeat(2,minmax(0,1fr));
+.record-toolbar {
+flex-wrap:wrap;
 gap:.55rem;
-margin:1rem 0}
-.progress-kpi {
-min-height:92px;
-padding:.8rem}
-.progress-kpi-value {
-font-size:1.55rem}
-.progress-plan-grid {
-grid-template-columns:1fr}
-.column-plan-list {
-grid-template-columns:1fr}
-.progress-plan-card {
-min-height:auto;
-padding:.85rem}
-.progress-plan-item {
-min-height:44px;
-padding:.58rem .65rem;
-font-size:.8rem}
-.progress-section-head {
-align-items:flex-start;
-flex-direction:column;
-gap:.65rem}
-.heatmap-controls {
-width:100%}
-.heatmap-controls select {
-min-height:44px;
-flex:1;
-font-size:.8rem}
-.memory-legend {
-display:grid;
-grid-template-columns:repeat(2,minmax(0,1fr));
-gap:.55rem .7rem}
-.memory-heatmap {
-grid-template-columns:repeat(4,minmax(0,1fr));
-gap:.35rem;
-padding:.55rem}
-.memory-cell {
+padding:.7rem 0}
+.record-month-controls {
+order:1}
+.record-month-label {
+order:2;
+margin-left:auto}
+.record-save-status {
+order:3;
+flex:1 0 100%;
 min-width:0;
-min-height:58px;
-padding:.42rem .35rem;
-font-size:.66rem;
-word-break:break-word}
-.memory-cell span {
-font-size:.55rem}
-.vocab-card.progress-jump-float {
-animation-duration:1.35s}
+font-size:.68rem;
+text-align:left}
+.record-nav-button,.record-today-button {
+min-width:44px;
+height:44px}
+.record-table-scroll {
+border-radius:12px}
+.record-row-label {
+width:132px;
+padding:.45rem .55rem}
+.record-table {
+min-width:2302px}
 }
 @media(max-width:380px) {
-.progress-panel {
-padding-left:.75rem;
-padding-right:.75rem}
-.progress-panel-head {
-margin-left:-.75rem;
-margin-right:-.75rem;
-padding-left:.75rem;
-padding-right:.75rem}
-.memory-heatmap {
-grid-template-columns:repeat(3,minmax(0,1fr))}
+.record-panel h2 {
+font-size:1.45rem}
+.record-row-label {
+width:124px}
+.record-table {
+min-width:2294px}
 }
 
 .game-scope-toggle {
@@ -1690,7 +1610,7 @@ font:700 1.35rem var(--serif)}
 }
 /* 打印是完整学习材料导出：隐藏交互控件，强制展开所有词集并避免栏目被截断。 */
 @media print {
-.toc,.progress-entry,.daily-reminder,.progress-overlay {
+.toc,.record-entry,.record-overlay {
 display:none}
 .cover {
 padding:2rem}

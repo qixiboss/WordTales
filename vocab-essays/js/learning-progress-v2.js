@@ -1,6 +1,6 @@
 /* ============================================================
  * Module: LearningProgress v2
- * 规范词条、FSRS-6 三档评分、统一星标、进度面板与旧档案迁移。
+ * 规范词条、FSRS-6 三档评分、统一星标、栏目完成记录与旧档案迁移。
  * ============================================================ */
 WordTales.LearningProgress = (function() {
   var STORAGE_KEY = 'wordtales.learning.v1';
@@ -14,9 +14,6 @@ WordTales.LearningProgress = (function() {
   var ready = false;
   var pending = [];
   var saveTimer = null;
-  var overlay = null;
-  var panel = null;
-  var dashboardPreviousFocus = null;
   var articleObserver = null;
   var columnIndex = Object.create(null);
   var paragraphIndex = Object.create(null);
@@ -49,6 +46,7 @@ WordTales.LearningProgress = (function() {
       articles: {},
       analyses: {},
       days: {},
+      columnCompletions: {},
       reminders: { lastShown: '', notifications: false },
       processedSubmissions: [],
       events: []
@@ -181,6 +179,32 @@ WordTales.LearningProgress = (function() {
     target.fsrsCard.last_review = target.lastReviewedAt || target.fsrsCard.last_review;
     target.fsrsCard.state = target.reviewCount ? (window.FSRS ? window.FSRS.State.Review : 2) : (window.FSRS ? window.FSRS.State.Learning : 1);
   }
+  function completionDayKey(value) {
+    if (value == null) return dayKey();
+    if (Object.prototype.toString.call(value) === '[object Date]') {
+      return isNaN(value.getTime()) ? '' : dayKey(value);
+    }
+    var match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return '';
+    var date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    if (date.getFullYear() !== Number(match[1]) || date.getMonth() !== Number(match[2]) - 1 || date.getDate() !== Number(match[3])) return '';
+    return dayKey(date);
+  }
+  function normalizeColumnCompletions(candidate) {
+    var normalized = {};
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return normalized;
+    Object.keys(candidate).forEach(function(dateKey) {
+      var normalizedDate = completionDayKey(dateKey);
+      var cells = candidate[dateKey];
+      if (!normalizedDate || normalizedDate !== dateKey || !cells || typeof cells !== 'object' || Array.isArray(cells)) return;
+      Object.keys(cells).forEach(function(columnId) {
+        if (cells[columnId] !== true || !WordTales.Data.getColumn(columnId)) return;
+        if (!normalized[normalizedDate]) normalized[normalizedDate] = {};
+        normalized[normalizedDate][columnId] = true;
+      });
+    });
+    return normalized;
+  }
   function migrateCandidate(candidate) {
     if (!candidate || (candidate.version !== 1 && candidate.version !== 2)) return freshData();
     var store = freshData();
@@ -190,6 +214,7 @@ WordTales.LearningProgress = (function() {
     store.articles = candidate.articles || {};
     store.analyses = candidate.analyses || {};
     store.days = candidate.days || {};
+    store.columnCompletions = normalizeColumnCompletions(candidate.columnCompletions);
     store.reminders = candidate.reminders || store.reminders;
     store.starMigrationV2 = !!candidate.starMigrationV2;
     store.processedSubmissions = Array.isArray(candidate.processedSubmissions) ? candidate.processedSubmissions.slice(-MAX_SUBMISSIONS) : [];
@@ -248,9 +273,14 @@ WordTales.LearningProgress = (function() {
   }
   function writeProfileNow() {
     if (!database || persistenceMode !== 'indexedDB') return Promise.resolve();
-    return requestToPromise(database.transaction('profiles', 'readwrite').objectStore('profiles').put({
-      id: 'current', updatedAt: load().updatedAt, data: snapshot()
-    }));
+    return new Promise(function(resolve, reject) {
+      var tx;
+      try { tx = database.transaction('profiles', 'readwrite'); } catch (e) { reject(e); return; }
+      tx.objectStore('profiles').put({ id: 'current', updatedAt: load().updatedAt, data: snapshot() });
+      tx.oncomplete = function() { resolve(true); };
+      tx.onerror = function() { reject(tx.error || new Error('Profile save failed')); };
+      tx.onabort = function() { reject(tx.error || new Error('Profile save aborted')); };
+    });
   }
   function saveFallback() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(load())); return true; } catch (e) { return false; }
@@ -264,6 +294,21 @@ WordTales.LearningProgress = (function() {
       saveTimer = null;
       writeProfileNow().catch(function() { persistenceMode = 'localStorage'; saveFallback(); });
     }, 180);
+  }
+  function saveProfileNow() {
+    load().updatedAt = nowIso();
+    mirrorLegacyStars();
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    if (!database || persistenceMode !== 'indexedDB') return Promise.resolve(saveFallback());
+    try {
+      return writeProfileNow().then(function() { return true; }).catch(function() {
+        persistenceMode = 'localStorage';
+        return saveFallback();
+      });
+    } catch (e) {
+      persistenceMode = 'localStorage';
+      return Promise.resolve(saveFallback());
+    }
   }
   function commitReview(event) {
     load().updatedAt = nowIso();
@@ -408,7 +453,6 @@ WordTales.LearningProgress = (function() {
     var event = { at: now.toISOString(), day: dayKey(now), type: 'word_rating', targetId: entryId, meta: Object.assign({}, meta || {}, { rating: rating, submissionId: submissionId || '' }) };
     store.events.push(event);
     return commitReview(event).then(function(saved) {
-      refreshOpenDashboard();
       if (WordTales.Progress && WordTales.Progress.refresh) WordTales.Progress.refresh();
       var value = getEntryState(entryId);
       value.saved = saved !== false;
@@ -511,6 +555,52 @@ WordTales.LearningProgress = (function() {
   function getStarredEntryIds() {
     return Object.keys(load().words).filter(function(id) { return !!load().words[id].isStarred && !!WordTales.Data.getEntry(id); });
   }
+  function getCompletedColumnIds(date) {
+    var dateKey = completionDayKey(date);
+    var cells = dateKey && load().columnCompletions[dateKey];
+    var ids = [];
+    if (!cells) return ids;
+    WordTales.Data.sets.forEach(function(set) {
+      set.columns.forEach(function(column) {
+        if (cells[column.id] === true) ids.push(column.id);
+      });
+    });
+    return ids;
+  }
+  function isColumnCompleted(columnId, date) {
+    var dateKey = completionDayKey(date);
+    return !!(dateKey && WordTales.Data.getColumn(columnId) && load().columnCompletions[dateKey] && load().columnCompletions[dateKey][columnId] === true);
+  }
+  function setColumnCompleted(columnId, date, completed) {
+    var dateKey = completionDayKey(date);
+    if (!ready || !dateKey || !WordTales.Data.getColumn(columnId) || typeof completed !== 'boolean') {
+      var existing = ready && dateKey && WordTales.Data.getColumn(columnId) ? isColumnCompleted(columnId, dateKey) : false;
+      return Promise.resolve({ completed: existing, saved: false, invalid: true });
+    }
+    var target = completed;
+    var completions = load().columnCompletions;
+    var cells = completions[dateKey];
+    var current = !!(cells && cells[columnId] === true);
+    if (current === target) return Promise.resolve({ completed: target, saved: true, unchanged: true });
+    if (target) {
+      if (!cells) cells = completions[dateKey] = {};
+      cells[columnId] = true;
+    } else {
+      delete cells[columnId];
+      if (!Object.keys(cells).length) delete completions[dateKey];
+    }
+    return saveProfileNow().then(function(saved) {
+      if (saved) return { completed: target, saved: true };
+      if (current) {
+        if (!completions[dateKey]) completions[dateKey] = {};
+        completions[dateKey][columnId] = true;
+      } else if (completions[dateKey]) {
+        delete completions[dateKey][columnId];
+        if (!Object.keys(completions[dateKey]).length) delete completions[dateKey];
+      }
+      return { completed: current, saved: false };
+    });
+  }
   function trackArticle(columnId) {
     if (!ready) { pending.push(function() { trackArticle(columnId); }); return; }
     if (!columnIndex[columnId]) return;
@@ -525,94 +615,6 @@ WordTales.LearningProgress = (function() {
     var record = load().analyses[paragraphId] || { firstOpened: nowIso(), lastOpened: '', openCount: 0 };
     record.lastOpened = nowIso(); record.openCount++; load().analyses[paragraphId] = record; ensureDay().analyses++; saveSoon();
   }
-  function navigateTo(item) {
-    closeDashboard();
-    window.location.hash = item.column.id;
-  }
-  function groupDueColumns(due) {
-    var grouped = Object.create(null);
-    due.forEach(function(item) {
-      var id = item.column.id;
-      if (!grouped[id]) grouped[id] = { set: item.set, column: item.column, count: 0 };
-      grouped[id].count++;
-    });
-    return Object.keys(grouped).map(function(id) { return grouped[id]; }).sort(function(a, b) { return b.count - a.count; });
-  }
-  function formatPercent(value) { return value == null || isNaN(value) ? '—' : Math.round(value * 100) + '%'; }
-  function renderHeatmap() {
-    var grid = panel && panel.querySelector('#memoryHeatmap'); if (!grid) return;
-    grid.innerHTML = '';
-    var setId = panel.querySelector('#heatmapSet').value;
-    var set = WordTales.Data.getSet(setId) || WordTales.Data.sets[0];
-    set.columns.forEach(function(column) {
-      column.words.forEach(function(word) {
-        var state = memoryState(word.id); var probability = recallProbability(word.id);
-        var cell = document.createElement('button'); cell.type = 'button'; cell.className = 'memory-cell ' + state; cell.textContent = word.word;
-        var sub = document.createElement('span'); sub.textContent = state === 'gray' ? column.title + ' · 未学习' : column.title + ' · ' + formatPercent(probability); cell.appendChild(sub);
-        cell.addEventListener('click', function() { navigateTo({ column: column }); }); grid.appendChild(cell);
-      });
-    });
-  }
-  function renderDashboard() {
-    if (!panel) return;
-    var due = getDueEntries(new Date()); var grouped = groupDueColumns(due);
-    var learned = Object.keys(load().words).filter(function(id) { return !!WordTales.Data.getEntry(id); });
-    var probabilities = learned.map(function(id) { return recallProbability(id); }).filter(function(value) { return value != null; });
-    var average = probabilities.length ? probabilities.reduce(function(sum, value) { return sum + value; }, 0) / probabilities.length : null;
-    panel.innerHTML = '<div class="progress-panel-head"><div><p class="progress-eyebrow">Article learning pulse</p><h2>你的学习进度</h2><p class="progress-date">到期时间按当前时刻计算 · ' + (persistenceMode === 'indexedDB' ? 'IndexedDB 已保存' : '本地存储降级模式') + '</p></div><button type="button" class="progress-close" aria-label="关闭进度面板">×</button></div>' +
-      '<div class="progress-kpis"><div class="progress-kpi"><div class="progress-kpi-value">' + learned.length + '</div><div class="progress-kpi-label">已进入学习计划</div></div><div class="progress-kpi"><div class="progress-kpi-value">' + due.length + '</div><div class="progress-kpi-label">当前已到期</div></div><div class="progress-kpi"><div class="progress-kpi-value">' + formatPercent(average) + '</div><div class="progress-kpi-label">FSRS 平均回忆率</div></div><div class="progress-kpi"><div class="progress-kpi-value">' + getStarredEntryIds().length + '</div><div class="progress-kpi-label">当前生词</div></div></div>' +
-      '<section class="progress-section"><div class="progress-section-head"><div><h3>到期栏目</h3><p class="progress-section-note">逾期越久、遗忘越多的词优先</p></div></div><div class="progress-plan-card"><ul class="progress-plan-list column-plan-list" id="duePlan"></ul></div></section>' +
-      '<section class="progress-section"><div class="progress-section-head"><div><h3>记忆热力图</h3><p class="progress-section-note">基于 FSRS 当前回忆概率</p></div><div class="heatmap-controls"><label for="heatmapSet">词集</label><select id="heatmapSet"></select></div></div><div class="memory-legend"><span><i class="memory-dot green"></i>稳定</span><span><i class="memory-dot yellow"></i>即将到期</span><span><i class="memory-dot red"></i>已到期或遗忘</span><span><i class="memory-dot gray"></i>未学习</span></div><div class="memory-heatmap" id="memoryHeatmap"></div><p class="progress-footnote">文章点读和词卡翻面记录学习接触；游戏中的熟悉与不熟悉会更新 FSRS 复习状态。数据仅保存在当前浏览器。</p></section>';
-    panel.querySelector('.progress-close').addEventListener('click', closeDashboard);
-    var list = panel.querySelector('#duePlan');
-    if (!grouped.length) { var empty = document.createElement('li'); empty.className = 'progress-empty'; empty.textContent = '当前没有已到期单词。'; list.appendChild(empty); }
-    grouped.forEach(function(item) {
-      var li = document.createElement('li'); var button = document.createElement('button'); button.type = 'button'; button.className = 'progress-plan-item'; button.textContent = item.set.label + ' · ' + item.column.title;
-      var small = document.createElement('small'); small.textContent = item.count + ' 个到期词'; button.appendChild(small); button.addEventListener('click', function() { navigateTo(item); }); li.appendChild(button); list.appendChild(li);
-    });
-    var select = panel.querySelector('#heatmapSet');
-    WordTales.Data.sets.forEach(function(set) { var option = document.createElement('option'); option.value = set.id; option.textContent = set.label + ' · ' + WordTales.Data.countWords(set) + '词'; select.appendChild(option); });
-    var active = document.querySelector('.set-content.active'); select.value = active && WordTales.Data.getSet(active.id) ? active.id : WordTales.Data.sets[0].id;
-    select.addEventListener('change', renderHeatmap); renderHeatmap();
-  }
-  function buildDashboard() {
-    overlay = document.createElement('div'); overlay.className = 'progress-overlay'; overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-label', '学习进度');
-    overlay.setAttribute('tabindex', '-1');
-    panel = document.createElement('div'); panel.className = 'progress-panel'; overlay.appendChild(panel); overlay.addEventListener('mousedown', function(event) { if (event.target === overlay) closeDashboard(); }); overlay.addEventListener('keydown', handleDashboardKeydown); document.body.appendChild(overlay);
-  }
-  function setBackgroundInert(inert) {
-    document.querySelectorAll('.library-view').forEach(function(element) { element.inert = inert; });
-  }
-  function dashboardFocusables() {
-    if (!overlay) return [];
-    return Array.prototype.filter.call(overlay.querySelectorAll('button, select, [href], [tabindex]:not([tabindex="-1"])'), function(element) {
-      return !element.disabled && element.getClientRects().length > 0;
-    });
-  }
-  function handleDashboardKeydown(event) {
-    if (!overlay || !overlay.classList.contains('active')) return;
-    if (event.key === 'Escape') { event.preventDefault(); closeDashboard(); return; }
-    if (event.key !== 'Tab') return;
-    var focusables = dashboardFocusables();
-    if (!focusables.length) { event.preventDefault(); overlay.focus(); return; }
-    var first = focusables[0]; var last = focusables[focusables.length - 1];
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-  }
-  function openDashboard() {
-    if (!ready) { pending.push(openDashboard); return; }
-    if (!overlay) buildDashboard();
-    dashboardPreviousFocus = document.activeElement;
-    renderDashboard(); overlay.classList.add('active'); setBackgroundInert(true); document.body.style.overflow = 'hidden';
-    setTimeout(function() { if (!overlay || !overlay.classList.contains('active')) return; var focusables = dashboardFocusables(); (focusables[0] || overlay).focus(); }, 0);
-  }
-  function closeDashboard() {
-    if (!overlay || !overlay.classList.contains('active')) return;
-    overlay.classList.remove('active'); setBackgroundInert(false); document.body.style.overflow = '';
-    var previous = dashboardPreviousFocus; dashboardPreviousFocus = null;
-    if (previous && previous.isConnected && typeof previous.focus === 'function') previous.focus();
-  }
-  function refreshOpenDashboard() { if (overlay && overlay.classList.contains('active')) renderDashboard(); }
   function observeArticles() {
     if (!('IntersectionObserver' in window)) return;
     articleObserver = new IntersectionObserver(function(entries) { entries.forEach(function(entry) { if (entry.isIntersecting && entry.intersectionRatio >= .25) { var section = entry.target.closest('.column-section'); if (section) trackArticle(section.id); } }); }, { threshold: [.25] });
@@ -620,10 +622,8 @@ WordTales.LearningProgress = (function() {
   }
   function init() {
     buildIndexes(); load();
-    document.querySelectorAll('.progress-entry').forEach(function(entry) { entry.disabled = true; entry.setAttribute('aria-busy', 'true'); entry.addEventListener('click', openDashboard); });
     return hydrate().then(function() {
       migrateLegacyStars(); ready = true;
-      document.querySelectorAll('.progress-entry').forEach(function(entry) { entry.disabled = false; entry.removeAttribute('aria-busy'); });
       var queued = pending.slice(); pending = []; queued.forEach(function(operation) { operation(); }); observeArticles();
       window.addEventListener('pagehide', function() { if (saveTimer) clearTimeout(saveTimer); writeProfileNow().catch(function() {}); });
       return api;
@@ -631,8 +631,6 @@ WordTales.LearningProgress = (function() {
   }
   var api = {
     init: init,
-    open: openDashboard,
-    close: closeDashboard,
     trackWord: trackWord,
     trackArticle: trackArticle,
     trackAnalysis: trackAnalysis,
@@ -641,6 +639,9 @@ WordTales.LearningProgress = (function() {
     getEntryState: getEntryState,
     getStarredEntryIds: getStarredEntryIds,
     setStarred: setStarred,
+    getCompletedColumnIds: getCompletedColumnIds,
+    isColumnCompleted: isColumnCompleted,
+    setColumnCompleted: setColumnCompleted,
     recallProbability: recallProbability,
     memoryState: memoryState,
     getData: function() { return load(); },

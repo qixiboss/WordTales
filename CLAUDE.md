@@ -27,21 +27,22 @@ Scripts use `defer` and must remain in this dependency order (`check-integrity.j
 
 ```text
 vendor/ts-fsrs/index.umd.js → js/namespace.js → js/data.js → js/renderer.js
-→ js/learning-progress-v2.js → js/features.js
+→ js/learning-progress-v2.js → js/study-record.js → js/features.js
 ```
 
 | Layer | File | Role |
 | --- | --- | --- |
 | Data | `js/data.js` | Immutable content (`var sets = [...]`), occurrence→entry mapping, context/source-order APIs. |
 | Renderer | `js/renderer.js` | Escapes content; renders the article/library DOM. |
-| LearningProgress | `js/learning-progress-v2.js` | FSRS-6 scheduling, IndexedDB/localStorage persistence, v1 migration, idempotent events, canonical star state. |
-| Features/App | `js/features.js` | Hash routing plus article reading, audio, cards, progress panel, games, copy practice. |
+| LearningProgress | `js/learning-progress-v2.js` | FSRS-6 scheduling, IndexedDB/localStorage persistence, v1 migration, idempotent events, canonical star state and column-completion records. |
+| StudyRecord | `js/study-record.js` | Monthly date-by-column completion table, dialog behavior and accessible checkboxes. |
+| Features/App | `js/features.js` | Hash routing plus article reading, audio, cards, games and copy practice. |
 
 `js/learning-progress.js` is not loaded; it exists only as historical reference — do not modify it for active behavior.
 
 ## Context loading rules
 
-- Article cards, scheduling, persistence and star state → `js/features.js`, `js/learning-progress-v2.js`, plus README's 使用路径 / 数据保存与迁移 sections (the user-facing behavior contract).
+- Article cards, scheduling, persistence, star state and manual column completions → `js/features.js`, `js/learning-progress-v2.js`, `js/study-record.js`, plus README's 使用路径 / 数据保存与迁移 sections (the user-facing behavior contract).
 - Article read-aloud, word highlighting, audio cues → `.codex/skills/sync-article-audio/SKILL.md` and `references/wordtales-workflow.md` (tokenization contract, cue generation, acceptance checklist).
 - Corpus content (sets, columns, words, paragraphs) → `js/data.js`; the integrity rules live in `scripts/check-integrity.js`, not here.
 - New essay content from word-list photos → `.trae/skills/vocab-essay/SKILL.md`.
@@ -59,11 +60,13 @@ Routing and learning state:
 - Every rating is committed immediately with an idempotent submission ID.
 - Article auto-highlighting and automatic exposure must not create learning records.
 - `isStarred` in the v2 profile is authoritative; `localStorage.starredWords` is a compatibility mirror only.
+- Manual completion checks are keyed by local-calendar `YYYY-MM-DD` and stable column ID; never derive record dates by slicing a UTC ISO string.
+- Completion UI must await `setColumnCompleted()` and surface `saved: false`; never announce a check as saved before persistence succeeds.
 
 Speech:
 
 - Speech failures must never block article interaction or navigation.
-- All speech respects the persisted US/UK accent (`wordtales.accent`, default `us`); voice selection prefers the accent pool and degrades to any English voice when it is empty.
+- Speech keeps honoring the legacy persisted US/UK accent (`wordtales.accent`, default `us`) even though the page no longer exposes an accent toggle; voice selection prefers that accent pool and degrades to any English voice when it is empty.
 
 Data and deployment:
 
@@ -86,5 +89,5 @@ For any change:
 1. `node scripts/check-integrity.js` — must pass; do not report completion while it fails.
 2. `node --test tests/*.test.js` — must pass for changes to data or learning progress.
 3. `node --check` every edited script; run `git diff --check`.
-4. Browser smoke tests must cover: empty hash, `#library`, legacy `#study`, set and column deep links; first-click column positioning; article read-aloud reset and the US/UK accent toggle; unified stars in game, copy practice and progress; desktop and 390 px viewport; local server and `file://` startup.
+4. Browser smoke tests must cover: empty hash, `#library`, legacy `#study`, set and column deep links; first-click column positioning; record-table month navigation, check/uncheck and reload persistence; article read-aloud reset; unified stars in game and copy practice; desktop and 390 px viewport; local server and `file://` startup.
 5. State plainly what was changed and what could not be verified.

@@ -4,10 +4,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="通过主题短文、双面词卡、语音朗读和练习功能，在真实语境中学习和记忆英语词汇。">
+<meta name="description" content="通过主题短文、双面词卡、语音朗读、练习和学习记录表，在真实语境中学习和记忆英语词汇。">
 <title>词汇记忆短文集 · Vocabulary in Context</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235b7cfa'/%3E%3Ctext x='16' y='23' font-size='18' font-family='Georgia' fill='white' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/styles.css?v=3.0.5">
+<link rel="stylesheet" href="css/styles.css?v=3.0.6">
 </head>
 <body>
 <header class="cover library-view">
@@ -17,22 +17,32 @@
     <div class="set-switcher" id="setSwitcher"></div>
     <p class="set-meta" id="setMeta" aria-live="polite"></p>
     <div class="cover-actions">
-      <button type="button" class="progress-entry" id="progressEntry">
-        <span class="progress-entry-dot" aria-hidden="true"></span>
-        今日学习进度
+      <button type="button" class="record-entry" id="recordEntry" disabled aria-busy="true">
+        <span class="record-entry-mark" aria-hidden="true">✓</span>
+        记录表
       </button>
-      <div class="accent-control" id="accentControl" role="group" aria-label="发音音色"></div>
     </div>
   </div>
 </header>
 <nav class="toc library-view" id="toc" aria-label="栏目目录"></nav>
-<aside class="daily-reminder library-view" id="dailyReminder" hidden aria-live="polite"></aside>
 <main class="library-view" id="appContent"></main>
 <template id="changelog-tpl">
 <div class="changelog">
   <div class="changelog-head">
     <h2>第八份：更新日志</h2>
     <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v3.4 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-08-09</div>
+    <div class="cv-desc"><strong>新增学习记录表。</strong>用日期 × 词集栏目的打勾表取代原学习进度面板，专注记录每天完成的学习栏目。</div>
+    <ul>
+      <li>记录表按月展示日期，左侧固定显示第几份、第几列</li>
+      <li>支持勾选今天或补记过去日期，未来日期不可勾选</li>
+      <li>勾选状态自动保存，重新打开页面后仍会保留</li>
+      <li>移除页首美音/英音切换与原“今日学习进度”面板</li>
+    </ul>
   </div>
 
   <div class="changelog-version">
@@ -204,8 +214,10 @@
 
 <script defer src="js/renderer.js?v=3.0.0"></script>
 
-<script defer src="js/learning-progress-v2.js?v=3.0.7"></script>
+<script defer src="js/learning-progress-v2.js?v=3.0.8"></script>
 
-<script defer src="js/features.js?v=3.0.3"></script>
+<script defer src="js/study-record.js?v=1.0.0"></script>
+
+<script defer src="js/features.js?v=3.0.4"></script>
 </body>
 </html>

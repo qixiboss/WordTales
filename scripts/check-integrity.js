@@ -20,8 +20,9 @@ const expectedScripts = [
   'js/namespace.js?v=3.0.0',
   'js/data.js?v=3.0.0',
   'js/renderer.js?v=3.0.0',
-  'js/learning-progress-v2.js?v=3.0.7',
-  'js/features.js?v=3.0.3'
+  'js/learning-progress-v2.js?v=3.0.8',
+  'js/study-record.js?v=1.0.0',
+  'js/features.js?v=3.0.4'
 ];
 const scriptTags = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 const scripts = scriptTags.map((match) => {
@@ -35,6 +36,16 @@ if (scripts.some((script) => !script.source)) {
 if (scripts.map((script) => script.source).join('\n') !== expectedScripts.join('\n')) {
   errors.push(`Unexpected script order: ${scripts.map((script) => script.source || '[inline]').join(', ')}.`);
 }
+
+const recordButtons = [...html.matchAll(/<button\b[^>]*\bid=["']recordEntry["'][^>]*>[\s\S]*?<\/button>/gi)];
+if (recordButtons.length !== 1 || !/\u8bb0\u5f55\u8868/.test(recordButtons[0][0])) {
+  errors.push('The page must expose exactly one record table button labelled "\u8bb0\u5f55\u8868".');
+}
+['progressEntry', 'accentControl', 'dailyReminder'].forEach((id) => {
+  if (new RegExp(`\\bid=["']${id}["']`, 'i').test(html)) {
+    errors.push(`Removed interface shell is still present: #${id}.`);
+  }
+});
 
 function localAssetPath(reference) {
   if (!reference || /^(?:[a-z]+:|\/\/|#)/i.test(reference)) return null;
