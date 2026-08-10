@@ -2427,9 +2427,9 @@ back.appendChild(line);
 while (card.firstChild) card.removeChild(card.firstChild);
 inner.appendChild(front);
 inner.appendChild(back);
-card.appendChild(inner);
-// 星标是词卡上的独立控件，重建双面内容时保留它，避免被翻卡逻辑吞掉。
+// 星标放在 DOM 的第一个位置：Tab 会先聚焦右上角标记，再进入翻卡控件。
 if (star) card.appendChild(star);
+card.appendChild(inner);
 // 翻转控件放在 card-inner，避免外层“按钮”再嵌套星标按钮。
 inner.setAttribute('role', 'button');
 inner.setAttribute('tabindex', '0');

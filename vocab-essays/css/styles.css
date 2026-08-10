@@ -908,8 +908,8 @@ text-align:center}
 .vocab-card-star:not(.is-starred) {
 opacity:0;
 transition:opacity .16s ease,background .16s ease,transform .16s ease}
-.vocab-card:hover .vocab-card-star,
-.vocab-card:focus-within .vocab-card-star,
+.vocab-card-star:hover,
+.vocab-card-star:focus-visible,
 .vocab-card-star.is-starred {
 opacity:1}
 .vocab-card-star:hover,
