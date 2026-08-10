@@ -1206,22 +1206,22 @@ return getStarredWords().some(function(value){ return value.toLowerCase() === St
 }
 
 function updateMainCardStars(section) {
-// 游戏修改星标后立即镜像到主词卡；DOM 星形只是缓存的视觉投影。
+// 游戏或词卡修改星标后立即镜像到主词卡；学习档案才是唯一事实来源。
 (section || document).querySelectorAll('.vocab-card').forEach(function(card){
 var vw = card.querySelector('.vw');
 if (!vw) return;
-var existing = card.querySelector('.vocab-card-star');
-if (isWordStarred(vw.textContent.trim(), card.dataset.vocabId)) {
-if (!existing) {
-var star = document.createElement('span');
-star.className = 'vocab-card-star';
-star.textContent = '\u2605';
-card.appendChild(star);
-}
-} else if (existing) {
-existing.remove();
-}
+setCardStarState(card, isWordStarred(vw.textContent.trim(), card.dataset.vocabId));
 });
+}
+
+function setCardStarState(card, starred) {
+var star = card.querySelector('.vocab-card-star');
+if (!star) return;
+if (starred) star.classList.add('is-starred');
+else star.classList.remove('is-starred');
+star.setAttribute('aria-pressed', starred ? 'true' : 'false');
+star.setAttribute('aria-label', starred ? '已标记为不太认识，点击取消标记' : '标记为不太认识');
+star.title = starred ? '已标记为不太认识，点击取消标记' : '标记为不太认识';
 }
 
 function updateDzRects() {
@@ -2408,6 +2408,7 @@ if (card.querySelector('.card-inner')) return;
 var vw = card.querySelector('.vw');
 var vp = card.querySelector('.vp');
 var vm = card.querySelector('.vm');
+var star = card.querySelector('.vocab-card-star');
 if (!vw) return;
 var inner = document.createElement('div');
 inner.className = 'card-inner';
@@ -2427,14 +2428,17 @@ while (card.firstChild) card.removeChild(card.firstChild);
 inner.appendChild(front);
 inner.appendChild(back);
 card.appendChild(inner);
-card.setAttribute('role', 'button');
-card.setAttribute('tabindex', '0');
-card.setAttribute('aria-pressed', 'false');
-card.setAttribute('aria-label', vw.textContent.trim() + '，单词卡片，按回车或空格键翻转');
+// 星标是词卡上的独立控件，重建双面内容时保留它，避免被翻卡逻辑吞掉。
+if (star) card.appendChild(star);
+// 翻转控件放在 card-inner，避免外层“按钮”再嵌套星标按钮。
+inner.setAttribute('role', 'button');
+inner.setAttribute('tabindex', '0');
+inner.setAttribute('aria-pressed', 'false');
+inner.setAttribute('aria-label', vw.textContent.trim() + '，单词卡片，按回车或空格键翻转');
 function toggleCard() {
 // 每次人为翻面都算一次接触；批量显示模式只改 DOM，不污染个人学习记录。
 card.classList.toggle('flipped');
-card.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
+inner.setAttribute('aria-pressed', card.classList.contains('flipped') ? 'true' : 'false');
 if (card.dataset.vocabId) {
 WordTales.LearningProgress.trackWord(card.dataset.vocabId, 'card', {
 columnId: card.closest('.column-section') ? card.closest('.column-section').id : '',
@@ -2442,15 +2446,30 @@ occurrenceId: card.dataset.vocabId
 });
 }
 }
-card.addEventListener('click', function(e){
+inner.addEventListener('click', function(e){
 toggleCard();
 });
-card.addEventListener('keydown', function(e){
+inner.addEventListener('keydown', function(e){
 if (e.key === 'Enter' || e.key === ' ') {
 e.preventDefault();
 toggleCard();
 }
 });
+if (star) {
+setCardStarState(card, isWordStarred(vw.textContent.trim(), card.dataset.vocabId));
+star.addEventListener('click', function(e){
+// 星标点击不能触发外层卡片翻面。
+e.preventDefault();
+e.stopPropagation();
+var starred = !isWordStarred(vw.textContent.trim(), card.dataset.vocabId);
+WordTales.LearningProgress.setStarred(card.dataset.vocabId, starred, starred ? 'manual' : '');
+setCardStarState(card, starred);
+});
+star.addEventListener('keydown', function(e){
+// Enter/Space 在按钮上只操作星标，不交给外层词卡的翻转快捷键。
+e.stopPropagation();
+});
+}
 });
 }
 
@@ -2500,12 +2519,14 @@ var cards = section.querySelectorAll('.vocab-card');
 if (mode === 'front') {
 cards.forEach(function(c){
 c.classList.remove('flipped');
-c.setAttribute('aria-pressed', 'false');
+var flipControl = c.querySelector('.card-inner');
+if (flipControl) flipControl.setAttribute('aria-pressed', 'false');
 });
 } else if (mode === 'back') {
 cards.forEach(function(c){
 c.classList.add('flipped');
-c.setAttribute('aria-pressed', 'true');
+var flipControl = c.querySelector('.card-inner');
+if (flipControl) flipControl.setAttribute('aria-pressed', 'true');
 });
 }
 });
