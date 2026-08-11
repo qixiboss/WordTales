@@ -54,7 +54,7 @@ first.focus();
 }
 }
 
-function activateModal(container, closeFn, label) {
+function activateModal(container, closeFn, label, initialFocus) {
 if (!_activeModal) {
 // 仅第一层 modal 隔离页面；横竖屏提示切到画板时会复用同一层状态。
 _modalPreviousFocus = document.activeElement;
@@ -69,6 +69,11 @@ container.setAttribute('aria-label', label);
 container.setAttribute('tabindex', '-1');
 setTimeout(function(){
 if (_activeModal !== container || !container.isConnected) return;
+var preferredFocus = typeof initialFocus === 'function' ? initialFocus() : initialFocus;
+if (preferredFocus && container.contains(preferredFocus) && !preferredFocus.disabled && preferredFocus.getClientRects().length > 0) {
+preferredFocus.focus();
+return;
+}
 var focusables = getModalFocusables(container);
 (focusables[0] || container).focus();
 }, 0);
@@ -1909,7 +1914,7 @@ return copyOverlay;
 function startCopyDesktop() {
 // 桌面模式大小写不敏感，但要求整词一致；错误只给即时视觉反馈，不自动泄露答案。
 var overlay = buildCopyOverlay();
-activateModal(overlay, endCopy, '抄写练习');
+activateModal(overlay, endCopy, '抄写练习', function(){ return overlay._input; });
 
 var wordDisplay = document.createElement('div');
 wordDisplay.className = 'copy-word-display';
@@ -1979,7 +1984,6 @@ setTimeout(function(){ input.classList.remove('wrong'); }, 300);
 }
 });
 
-setTimeout(function(){ input.focus(); }, 100);
 }
 
 function showCopyWord() {
