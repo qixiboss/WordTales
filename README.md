@@ -61,12 +61,18 @@ python3 -m http.server 8000
 
 ```text
 .
-├── .github/workflows/jekyll-gh-pages.yml
-├── scripts/check-integrity.js
+├── .codex/skills/sync-article-audio/ # 音频对齐与逐词高亮维护技能
+├── .github/workflows/jekyll-gh-pages.yml # GitHub Pages 发布流程
+├── scripts/
+│   └── check-integrity.js             # 语料、资源和脚本完整性检查
+├── tests/                             # 零依赖 Node 测试
+│   ├── helpers/                       # 浏览器环境模拟与共享常量
+│   ├── data.test.js                   # 语料索引与规范词条
+│   ├── learning-progress.test.js      # FSRS 与学习档案
+│   └── study-record.test.js           # 学习记录表
 ├── vocab-essays/
-│   ├── audio/                         # 栏目朗读 MP3
+│   ├── audio/                         # 28 个栏目朗读 MP3
 │   ├── css/styles.css                 # 文章主页、交互和响应式样式
-│   ├── vendor/ts-fsrs/                # 官方 UMD 包、元数据与 MIT 许可证
 │   ├── js/
 │   │   ├── namespace.js               # WordTales 命名空间
 │   │   ├── data.js                    # 内容、出现项和规范词条索引
@@ -74,6 +80,7 @@ python3 -m http.server 8000
 │   │   ├── learning-progress-v2.js    # FSRS、迁移、事件和统一星标
 │   │   ├── study-record.js            # 按月学习记录表与勾选交互
 │   │   └── features.js                # 文章、朗读、游戏、抄写和路由
+│   ├── vendor/ts-fsrs/                # 官方 UMD 包、元数据与 MIT 许可证
 │   └── vocab-essays.html
 ├── CLAUDE.md
 ├── LICENSE

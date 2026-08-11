@@ -38,8 +38,6 @@ vendor/ts-fsrs/index.umd.js → js/namespace.js → js/data.js → js/renderer.j
 | StudyRecord | `js/study-record.js` | Monthly date-by-column completion table, dialog behavior and accessible checkboxes. |
 | Features/App | `js/features.js` | Hash routing plus article reading, audio, cards, games and copy practice. |
 
-`js/learning-progress.js` is not loaded; it exists only as historical reference — do not modify it for active behavior.
-
 ## Context loading rules
 
 - Article cards, scheduling, persistence, star state and manual column completions → `js/features.js`, `js/learning-progress-v2.js`, `js/study-record.js`, plus README's 使用路径 / 数据保存与迁移 sections (the user-facing behavior contract).
