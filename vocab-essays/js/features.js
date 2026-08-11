@@ -2606,11 +2606,16 @@ document.getElementById(targetId).scrollIntoView({ block: 'start' });
 });
 }
 }
-WordTales.LearningProgress.init().then(function(){
+WordTales.Auth.init().then(function(){
+return WordTales.CloudSync.init();
+}).then(function(){
+return WordTales.LearningProgress.init();
+}).then(function(){
 WordTales.StudyRecord.init();
 WordTales.Progress.refresh();
 window.addEventListener('hashchange', switchToHash);
 switchToHash();
+return WordTales.CloudSync.connectProfile();
 });
 }
 

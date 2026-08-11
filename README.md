@@ -121,6 +121,16 @@ ts-fsrs UMD
 
 学习档案、事件和记录表勾选优先保存在 IndexedDB。v1 档案会幂等迁移为规范词条状态：保留既有到期时间，合并重复词记录，并把旧字符串星标映射到同拼写的规范词条。新档案中的 `isStarred` 是唯一事实来源；`localStorage.starredWords` 只作为旧功能兼容镜像。
 
+### 跨设备同步（Supabase）
+
+站点已预留 Supabase Magic Link 登录和按账号同步的云端档案。离线或未登录时仍照常使用本地进度；登录后会把当前浏览器作为离线缓存，并同步同一账号的云端档案。
+
+1. 在 Supabase 项目执行 `supabase/migrations/20260811000000_create_learning_profiles.sql`。
+2. 在 Supabase Auth 的 URL Configuration 中添加 GitHub Pages 地址（例如 `https://<用户名>.github.io/<仓库>/`）作为 Site URL 和 Redirect URL。
+3. 在 `vocab-essays/js/supabase-config.js` 填入项目 URL 和 **publishable key**。该 key 可公开；绝不能填写 `service_role` 或其他 secret key。
+
+`learning_profiles` 已开启 RLS，登录用户只能读写 `user_id = auth.uid()` 的那一行。首次登录时：若云端没有档案，会上传本机已有进度；若云端已有较新的档案，会优先下载云端版本。多人共用同一台设备时，不同账号不会互相上传既有的本地档案。
+
 浏览器无法使用 IndexedDB 时自动降级到 localStorage。旧单卡会话的 `wordtales.study-session.v1` 数据不会被读取，也不会被主动删除；已有词条状态、文章记录和加星数据继续保留。
 
 ## 验证

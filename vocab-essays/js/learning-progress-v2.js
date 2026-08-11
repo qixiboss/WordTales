@@ -242,6 +242,9 @@ WordTales.LearningProgress = (function() {
   function snapshot() {
     return JSON.parse(JSON.stringify(load()));
   }
+  function scheduleCloudSync() {
+    if (WordTales.CloudSync && WordTales.CloudSync.schedule) WordTales.CloudSync.schedule();
+  }
   function load() {
     if (!data) data = loadFallback();
     return data;
@@ -288,38 +291,50 @@ WordTales.LearningProgress = (function() {
   function saveSoon() {
     load().updatedAt = nowIso();
     mirrorLegacyStars();
-    if (persistenceMode !== 'indexedDB' || !database) { saveFallback(); return; }
+    if (persistenceMode !== 'indexedDB' || !database) { saveFallback(); scheduleCloudSync(); return; }
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(function() {
       saveTimer = null;
-      writeProfileNow().catch(function() { persistenceMode = 'localStorage'; saveFallback(); });
+      writeProfileNow().then(scheduleCloudSync).catch(function() { persistenceMode = 'localStorage'; saveFallback(); scheduleCloudSync(); });
     }, 180);
   }
   function saveProfileNow() {
     load().updatedAt = nowIso();
     mirrorLegacyStars();
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-    if (!database || persistenceMode !== 'indexedDB') return Promise.resolve(saveFallback());
+    if (!database || persistenceMode !== 'indexedDB') {
+      var fallbackSaved = saveFallback();
+      if (fallbackSaved) scheduleCloudSync();
+      return Promise.resolve(fallbackSaved);
+    }
     try {
-      return writeProfileNow().then(function() { return true; }).catch(function() {
+      return writeProfileNow().then(function() { scheduleCloudSync(); return true; }).catch(function() {
         persistenceMode = 'localStorage';
-        return saveFallback();
+        var saved = saveFallback();
+        if (saved) scheduleCloudSync();
+        return saved;
       });
     } catch (e) {
       persistenceMode = 'localStorage';
-      return Promise.resolve(saveFallback());
+      var fallbackSaved = saveFallback();
+      if (fallbackSaved) scheduleCloudSync();
+      return Promise.resolve(fallbackSaved);
     }
   }
   function commitReview(event) {
     load().updatedAt = nowIso();
     mirrorLegacyStars();
-    if (!database || persistenceMode !== 'indexedDB') return Promise.resolve(saveFallback());
+    if (!database || persistenceMode !== 'indexedDB') {
+      var fallbackSaved = saveFallback();
+      if (fallbackSaved) scheduleCloudSync();
+      return Promise.resolve(fallbackSaved);
+    }
     return new Promise(function(resolve, reject) {
       var tx;
       try { tx = database.transaction(['profiles', 'events'], 'readwrite'); } catch (e) { reject(e); return; }
       tx.objectStore('profiles').put({ id: 'current', updatedAt: load().updatedAt, data: snapshot() });
       tx.objectStore('events').add(event);
-      tx.oncomplete = function() { resolve(true); };
+      tx.oncomplete = function() { scheduleCloudSync(); resolve(true); };
       tx.onerror = function() { reject(tx.error || new Error('Review commit failed')); };
       tx.onabort = function() { reject(tx.error || new Error('Review commit aborted')); };
     }).catch(function() {
@@ -340,6 +355,16 @@ WordTales.LearningProgress = (function() {
         return writeProfileNow();
       });
     }).catch(function() { data = fallback; persistenceMode = 'localStorage'; });
+  }
+  function replaceData(candidate) {
+    data = candidate ? migrateCandidate(candidate) : freshData();
+    data.updatedAt = candidate && candidate.updatedAt ? candidate.updatedAt : nowIso();
+    mirrorLegacyStars();
+    if (!database || persistenceMode !== 'indexedDB') return Promise.resolve(saveFallback());
+    return writeProfileNow().then(function() { return true; }).catch(function() {
+      persistenceMode = 'localStorage';
+      return saveFallback();
+    });
   }
   function ensureDay() {
     var key = dayKey();
@@ -647,7 +672,8 @@ WordTales.LearningProgress = (function() {
     getData: function() { return load(); },
     getDayKey: dayKey,
     isReady: function() { return ready; },
-    getPersistenceMode: function() { return persistenceMode; }
+    getPersistenceMode: function() { return persistenceMode; },
+    replaceData: replaceData
   };
   return api;
 })();
