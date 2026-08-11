@@ -1,0 +1,27 @@
+name: Notify portal of app update
+
+# 应用推送后通知门户仓库重新构建部署(需要 PAT secret: PORTAL_PAT,
+# 在 GitHub Settings 创建 fine-grained token,仅授权 qixiboss/Everything4dudu 的
+# Actions: write 权限)。
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch portal rebuild
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PORTAL_PAT }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'qixiboss',
+              repo: 'Everything4dudu',
+              event_type: 'upstream-app-updated',
+              client_payload: { app: 'words' }
+            });
