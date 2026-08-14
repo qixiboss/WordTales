@@ -64,22 +64,37 @@ python3 -m http.server 8000
 ├── .codex/skills/sync-article-audio/ # 音频对齐与逐词高亮维护技能
 ├── .github/workflows/jekyll-gh-pages.yml # GitHub Pages 发布流程
 ├── scripts/
-│   └── check-integrity.js             # 语料、资源和脚本完整性检查
+│   ├── check-integrity.js             # 语料、资源和脚本完整性检查
+│   └── export-articles.js             # 从 data.js 导出 Markdown 文章（articles/ 为生成物，不入库）
 ├── tests/                             # 零依赖 Node 测试
 │   ├── helpers/                       # 浏览器环境模拟与共享常量
 │   ├── data.test.js                   # 语料索引与规范词条
 │   ├── learning-progress.test.js      # FSRS 与学习档案
+│   ├── cloud-sync.test.js             # 云同步合并与归属切换
 │   └── study-record.test.js           # 学习记录表
 ├── vocab-essays/
 │   ├── audio/                         # 28 个栏目朗读 MP3
 │   ├── css/styles.css                 # 文章主页、交互和响应式样式
 │   ├── js/
 │   │   ├── namespace.js               # WordTales 命名空间
+│   │   ├── supabase-config.js         # Supabase 公开配置（URL 与 publishable key）
+│   │   ├── auth.js                    # 魔法链接登录与本地模式
 │   │   ├── data.js                    # 内容、出现项和规范词条索引
 │   │   ├── renderer.js                # 文章主页 DOM
-│   │   ├── learning-progress-v2.js    # FSRS、迁移、事件和统一星标
+│   │   ├── learning-progress.js       # FSRS、迁移、事件和统一星标
+│   │   ├── cloud-sync.js              # 学习档案云同步
 │   │   ├── study-record.js            # 按月学习记录表与勾选交互
-│   │   └── features.js                # 文章、朗读、游戏、抄写和路由
+│   │   └── features/                  # 页面功能模块（WordTales.Features.*）
+│   │       ├── modal.js               # 共享弹层无障碍基础设施
+│   │       ├── reader.js              # 录音/系统语音朗读与逐词高亮
+│   │       ├── word-popup.js          # 文章内单词释义弹层
+│   │       ├── progress.js            # 星标与完成状态共享辅助
+│   │       ├── cards.js               # 词卡翻面与专栏工具栏
+│   │       ├── game.js                # 词汇拖拽分类游戏
+│   │       ├── copy-practice.js       # 星标词抄写练习
+│   │       ├── analysis.js            # 段落解析
+│   │       ├── navigation.js          # 词集切换
+│   │       └── app.js                 # 启动编排与 hash 路由
 │   ├── vendor/ts-fsrs/                # 官方 UMD 包、元数据与 MIT 许可证
 │   └── vocab-essays.html
 ├── CLAUDE.md
@@ -90,11 +105,13 @@ python3 -m http.server 8000
 经典脚本使用 `defer` 按依赖顺序加载：
 
 ```text
-ts-fsrs UMD
+ts-fsrs / supabase-js UMD
   → namespace
+  → supabase-config → auth
   → data
   → renderer
-  → learning-progress-v2
+  → learning-progress
+  → cloud-sync
   → study-record
   → features / App.init
 ```

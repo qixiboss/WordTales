@@ -23,10 +23,19 @@ const expectedScripts = [
   'js/auth.js?v=1.0.0',
   'js/data.js?v=3.0.0',
   'js/renderer.js?v=3.0.0',
-  'js/learning-progress-v2.js?v=3.0.8',
+  'js/learning-progress.js?v=3.1.0',
   'js/cloud-sync.js?v=1.0.0',
   'js/study-record.js?v=1.1.0',
-  'js/features.js?v=3.0.5'
+  'js/features/modal.js?v=3.1.0',
+  'js/features/reader.js?v=3.1.0',
+  'js/features/word-popup.js?v=3.1.0',
+  'js/features/progress.js?v=3.1.0',
+  'js/features/cards.js?v=3.1.0',
+  'js/features/game.js?v=3.1.0',
+  'js/features/copy-practice.js?v=3.1.0',
+  'js/features/analysis.js?v=3.1.0',
+  'js/features/navigation.js?v=3.1.0',
+  'js/features/app.js?v=3.1.0'
 ];
 const scriptTags = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 const scripts = scriptTags.map((match) => {

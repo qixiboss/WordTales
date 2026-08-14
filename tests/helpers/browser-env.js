@@ -182,7 +182,7 @@ function loadLearningApp(options = {}) {
   loadScript(context, 'vocab-essays/vendor/ts-fsrs/index.umd.js');
   loadScript(context, 'vocab-essays/js/namespace.js');
   loadScript(context, 'vocab-essays/js/data.js');
-  loadScript(context, 'vocab-essays/js/learning-progress-v2.js');
+  loadScript(context, 'vocab-essays/js/learning-progress.js');
   return context;
 }
 

@@ -26,25 +26,27 @@ There is no package manager. The test suite uses Node's built-in test runner, su
 Scripts use `defer` and must remain in this dependency order (`check-integrity.js` enforces it):
 
 ```text
-vendor/ts-fsrs/index.umd.js → js/namespace.js → js/data.js → js/renderer.js
-→ js/learning-progress-v2.js → js/study-record.js → js/features.js
+vendor (ts-fsrs, supabase-js) → js/namespace.js → js/supabase-config.js → js/auth.js
+→ js/data.js → js/renderer.js → js/learning-progress.js → js/cloud-sync.js → js/study-record.js
+→ js/features/: modal → reader → word-popup → progress → cards → game → copy-practice
+  → analysis → navigation → app
 ```
 
 | Layer | File | Role |
 | --- | --- | --- |
 | Data | `js/data.js` | Immutable content (`var sets = [...]`), occurrence→entry mapping, context/source-order APIs. |
 | Renderer | `js/renderer.js` | Escapes content; renders the article/library DOM. |
-| LearningProgress | `js/learning-progress-v2.js` | FSRS-6 scheduling, IndexedDB/localStorage persistence, v1 migration, idempotent events, canonical star state and column-completion records. |
+| LearningProgress | `js/learning-progress.js` | FSRS-6 scheduling, IndexedDB/localStorage persistence, v1 migration, idempotent events, canonical star state and column-completion records. |
+| Auth / CloudSync | `js/auth.js`, `js/cloud-sync.js` | Supabase magic-link sign-in and RLS-protected profile sync with a local-only fallback. |
 | StudyRecord | `js/study-record.js` | Monthly date-by-column completion table, dialog behavior and accessible checkboxes. |
-| Features/App | `js/features.js` | Hash routing plus article reading, audio, cards, games and copy practice. |
+| Features/App | `js/features/` | One file per feature under `WordTales.Features.*`: modal infrastructure, reader, word popup, star/completion helpers, cards, game, copy practice, analysis, set navigation, and `app.js` (hash routing plus `App.init`). |
 
 ## Context loading rules
 
-- Article cards, scheduling, persistence, star state and manual column completions → `js/features.js`, `js/learning-progress-v2.js`, `js/study-record.js`, plus README's 使用路径 / 数据保存与迁移 sections (the user-facing behavior contract).
+- Article cards, scheduling, persistence, star state and manual column completions → `js/features/` (cards, game, copy practice, progress), `js/learning-progress.js`, `js/study-record.js`, plus README's 使用路径 / 数据保存与迁移 sections (the user-facing behavior contract).
 - Article read-aloud, word highlighting, audio cues → `.codex/skills/sync-article-audio/SKILL.md` and `references/wordtales-workflow.md` (tokenization contract, cue generation, acceptance checklist).
 - Corpus content (sets, columns, words, paragraphs) → `js/data.js`; the integrity rules live in `scripts/check-integrity.js`, not here.
-- New essay content from word-list photos → `.trae/skills/vocab-essay/SKILL.md`.
-- Frontend code review → `.trae/skills/frontend-code-reviewer/SKILL.md`.
+- Standalone Markdown export of the corpus → `scripts/export-articles.js`; its `articles/` output is regenerated on demand and gitignored.
 - Deployment → `.github/workflows/jekyll-gh-pages.yml` (sync it when adding a required static directory).
 - User-facing changelog → `<template id="changelog-tpl">` in `vocab-essays.html`.
 
