@@ -7,7 +7,7 @@
 <meta name="description" content="通过主题短文、双面词卡、语音朗读、练习和学习记录表，在真实语境中学习和记忆英语词汇。">
 <title>词汇记忆短文集 · Vocabulary in Context</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%235b7cfa'/%3E%3Ctext x='16' y='23' font-size='18' font-family='Georgia' fill='white' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/styles.css?v=3.0.6">
+<link rel="stylesheet" href="css/styles.css?v=3.0.7">
 </head>
 <body>
 <header class="cover library-view">
@@ -32,6 +32,28 @@
   <div class="changelog-head">
     <h2>第八份：更新日志</h2>
     <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v3.6 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-08-14</div>
+    <div class="cv-desc"><strong>学习记录表支持全屏与缩放。</strong>记录表打开后占满当前窗口，默认适配当前屏幕；桌面端优先显示整月，手机端优先保证最近七天清晰可见。</div>
+    <ul>
+      <li>新增缩小、适屏、放大控制</li>
+      <li>默认自动定位今天，并保留最近七天的可视范围</li>
+      <li>月份切换和勾选记录不受缩放影响</li>
+    </ul>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v3.5 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-08-14</div>
+    <div class="cv-desc"><strong>栏目标题旁新增快捷完成按钮。</strong>无需打开学习记录表，即可按今天的日期完成当前栏目；记录仍沿用本地保存与登录后的云端同步。</div>
+    <ul>
+      <li>“今日完成”按钮放在每个栏目“游戏”入口左侧</li>
+      <li>保存成功后显示“已完成”，再次点击可取消当天记录</li>
+      <li>按钮操作与记录表共用同一条完成记录和数据库同步链路</li>
+    </ul>
   </div>
 
   <div class="changelog-version">
@@ -225,8 +247,8 @@
 
 <script defer src="js/cloud-sync.js?v=1.0.0"></script>
 
-<script defer src="js/study-record.js?v=1.0.0"></script>
+<script defer src="js/study-record.js?v=1.1.0"></script>
 
-<script defer src="js/features.js?v=3.0.4"></script>
+<script defer src="js/features.js?v=3.0.5"></script>
 </body>
 </html>

@@ -9,6 +9,7 @@ WordTales.StudyRecord = (function() {
   var previousFocus = null;
   var previousBodyOverflow = '';
   var initialized = false;
+  var applyActiveZoom = null;
   var weekdayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
   function pad(value) { return ('0' + value).slice(-2); }
@@ -96,10 +97,14 @@ WordTales.StudyRecord = (function() {
       var todayHeading = container.querySelector('.record-date-today');
       var rowHeading = container.querySelector('.record-row-label');
       if (!todayHeading) return;
-      var stickyWidth = rowHeading ? rowHeading.offsetWidth : 0;
+      var stickyWidth = rowHeading ? rowHeading.getBoundingClientRect().width : 0;
       var containerRect = container.getBoundingClientRect();
       var headingRect = todayHeading.getBoundingClientRect();
-      var targetLeft = container.scrollLeft + headingRect.left - containerRect.left - stickyWidth - 10;
+      var visibleWidth = container.clientWidth;
+      var todayWidth = headingRect.width;
+      /* 今天靠近视口右侧，让它左边的六天优先进入默认视野。 */
+      var recentDaysWidth = Math.max(0, visibleWidth - stickyWidth - todayWidth - 10);
+      var targetLeft = container.scrollLeft + headingRect.left - containerRect.left - stickyWidth - recentDaysWidth;
       container.scrollLeft = Math.max(0, targetLeft);
     }, 0);
   }
@@ -139,6 +144,16 @@ WordTales.StudyRecord = (function() {
     var monthLabel = appendElement(toolbar, 'p', 'record-month-label', formatMonth(activeMonth));
     monthLabel.setAttribute('aria-live', 'polite');
     monthLabel.setAttribute('tabindex', '-1');
+    var zoomControls = appendElement(toolbar, 'div', 'record-zoom-controls');
+    zoomControls.setAttribute('role', 'group');
+    zoomControls.setAttribute('aria-label', '缩放记录表');
+    var zoomOutButton = createButton('record-zoom-button', '−', '缩小记录表');
+    var zoomFitButton = createButton('record-zoom-fit', '适屏', '恢复记录表适屏大小');
+    var zoomInButton = createButton('record-zoom-button', '+', '放大记录表');
+    var zoomLabel = appendElement(zoomControls, 'span', 'record-zoom-label', '适屏');
+    zoomControls.appendChild(zoomOutButton);
+    zoomControls.appendChild(zoomFitButton);
+    zoomControls.appendChild(zoomInButton);
     var saveStatus = appendElement(toolbar, 'p', 'record-save-status', '未打勾表示当天未完成');
     saveStatus.setAttribute('role', 'status');
     saveStatus.setAttribute('aria-live', 'polite');
@@ -146,7 +161,55 @@ WordTales.StudyRecord = (function() {
     var scroller = appendElement(panel, 'div', 'record-table-scroll');
     scroller.setAttribute('tabindex', '0');
     scroller.setAttribute('aria-label', '可横向滚动的学习记录表');
-    var table = appendElement(scroller, 'table', 'record-table');
+    var zoomViewport = appendElement(scroller, 'div', 'record-table-zoom');
+    var table = appendElement(zoomViewport, 'table', 'record-table');
+    var MIN_ZOOM = 0.4;
+    var MAX_ZOOM = 1.5;
+    var ZOOM_STEP = 0.1;
+    var zoomLevel = 1;
+    var baseTableWidth = 0;
+    var baseTableHeight = 0;
+
+    function clampZoom(value) {
+      return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(value * 100) / 100));
+    }
+    function fitZoom() {
+      var availableWidth = scroller.clientWidth;
+      var tableWidth = baseTableWidth || table.offsetWidth || 2320;
+      if (!availableWidth) return 1;
+      /* 桌面端把整个月表收进当前窗口；窄屏优先让最近七天保持可读。 */
+      if (window.innerWidth <= 700) {
+        var firstRowLabel = table.querySelector('.record-row-label');
+        var firstDateHeading = table.querySelector('.record-date-heading');
+        var labelWidth = firstRowLabel ? firstRowLabel.offsetWidth : 150;
+        var dateWidth = firstDateHeading ? firstDateHeading.offsetWidth : 70;
+        return clampZoom(availableWidth / (labelWidth + dateWidth * 7));
+      }
+      return clampZoom(availableWidth / tableWidth);
+    }
+    function updateZoomControls() {
+      zoomLabel.textContent = Math.round(zoomLevel * 100) + '%';
+      zoomOutButton.disabled = zoomLevel <= MIN_ZOOM;
+      zoomInButton.disabled = zoomLevel >= MAX_ZOOM;
+    }
+    function setZoom(value) {
+      zoomLevel = clampZoom(value);
+      table.style.zoom = String(zoomLevel);
+      table.style.transform = 'none';
+      zoomViewport.style.width = Math.ceil(baseTableWidth * zoomLevel) + 'px';
+      zoomViewport.style.height = Math.ceil(baseTableHeight * zoomLevel) + 'px';
+      updateZoomControls();
+    }
+    zoomOutButton.addEventListener('click', function() { setZoom(zoomLevel - ZOOM_STEP); });
+    zoomFitButton.addEventListener('click', function() {
+      setZoom(fitZoom());
+      scrollTodayIntoView(scroller);
+    });
+    zoomInButton.addEventListener('click', function() { setZoom(zoomLevel + ZOOM_STEP); });
+    applyActiveZoom = function() {
+      setZoom(fitZoom());
+      scrollTodayIntoView(scroller);
+    };
     var caption = appendElement(table, 'caption', 'visually-hidden', formatMonth(activeMonth) + '各词集栏目完成记录');
     caption.id = 'studyRecordCaption';
     var thead = appendElement(table, 'thead');
@@ -214,6 +277,10 @@ WordTales.StudyRecord = (function() {
         });
       });
     });
+    baseTableWidth = table.offsetWidth || 2320;
+    baseTableHeight = table.offsetHeight || 0;
+    updateZoomControls();
+    if (overlay && overlay.classList.contains('active')) applyActiveZoom();
     scrollTodayIntoView(scroller);
     if (focusAction) {
       setTimeout(function() {
@@ -251,6 +318,7 @@ WordTales.StudyRecord = (function() {
     overlay.setAttribute('aria-hidden', 'false');
     setBackgroundInert(true);
     document.body.style.overflow = 'hidden';
+    if (applyActiveZoom) applyActiveZoom();
     setTimeout(function() {
       if (!overlay || !overlay.classList.contains('active')) return;
       var closeButton = overlay.querySelector('.record-close');

@@ -1217,6 +1217,26 @@ var vw = card.querySelector('.vw');
 if (!vw) return;
 setCardStarState(card, isWordStarred(vw.textContent.trim(), card.dataset.vocabId));
 });
+updateColumnCompletionButtons(section || document);
+}
+
+function setColumnCompletionButtonState(button, completed) {
+if (!button) return;
+button.textContent = completed ? '已完成' : '今日完成';
+button.classList.toggle('is-completed', completed);
+button.setAttribute('aria-pressed', completed ? 'true' : 'false');
+button.setAttribute('aria-label', completed ? '已完成今天的学习，点击取消' : '标记今天完成学习');
+button.title = completed ? '已完成今天的学习，点击取消' : '标记今天完成学习';
+}
+
+function updateColumnCompletionButtons(root) {
+var progress = WordTales.LearningProgress;
+if (!progress || !progress.isReady || !progress.isReady() || !progress.getDayKey) return;
+var dateKey = progress.getDayKey(new Date());
+(root || document).querySelectorAll('.column-complete-btn').forEach(function(button) {
+if (button.disabled || !button.dataset.columnId) return;
+setColumnCompletionButtonState(button, progress.isColumnCompleted(button.dataset.columnId, dateKey));
+});
 }
 
 function setCardStarState(card, starred) {
@@ -2535,6 +2555,66 @@ if (flipControl) flipControl.setAttribute('aria-pressed', 'true');
 }
 });
 });
+var completionButton = document.createElement('button');
+completionButton.type = 'button';
+completionButton.className = 'column-complete-btn';
+completionButton.dataset.columnId = section.id;
+completionButton.setAttribute('aria-live', 'off');
+var completionStatus = document.createElement('span');
+completionStatus.className = 'column-complete-status visually-hidden';
+completionStatus.setAttribute('role', 'status');
+completionStatus.setAttribute('aria-live', 'polite');
+head.appendChild(completionButton);
+head.appendChild(completionStatus);
+
+function completionDateKey() {
+var progress = WordTales.LearningProgress;
+if (progress && progress.getDayKey) return progress.getDayKey(new Date());
+var today = new Date();
+return today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
+}
+function updateCompletionButton(completed) {
+setColumnCompletionButtonState(completionButton, completed);
+}
+function announceCompletion(message, error) {
+completionStatus.textContent = message;
+completionStatus.classList.toggle('is-error', !!error);
+}
+function saveCompletion() {
+var progress = WordTales.LearningProgress;
+var dateKey = completionDateKey();
+if (!progress || !progress.isReady || !progress.isReady()) {
+announceCompletion('学习记录尚未准备好，请稍后重试', true);
+return;
+}
+var requested = !progress.isColumnCompleted(section.id, dateKey);
+var restoreFocus = document.activeElement === completionButton;
+completionButton.disabled = true;
+completionButton.classList.add('is-saving');
+completionButton.setAttribute('aria-busy', 'true');
+announceCompletion('正在保存今天的学习记录');
+progress.setColumnCompleted(section.id, dateKey, requested).then(function(result) {
+var completed = !!result.completed;
+updateCompletionButton(completed);
+if (result.saved) {
+announceCompletion(completed ? '已记录今天完成' : '已取消今天的完成记录');
+} else {
+announceCompletion('学习记录保存失败，请重试', true);
+}
+if (restoreFocus && completionButton.isConnected) completionButton.focus();
+}).catch(function() {
+updateCompletionButton(progress.isColumnCompleted(section.id, dateKey));
+announceCompletion('学习记录保存失败，请重试', true);
+if (restoreFocus && completionButton.isConnected) completionButton.focus();
+}).then(function() {
+completionButton.disabled = false;
+completionButton.classList.remove('is-saving');
+completionButton.removeAttribute('aria-busy');
+});
+}
+updateCompletionButton(WordTales.LearningProgress && WordTales.LearningProgress.isColumnCompleted
+? WordTales.LearningProgress.isColumnCompleted(section.id, completionDateKey()) : false);
+completionButton.addEventListener('click', saveCompletion);
 var gameBtn = document.createElement('button');
 gameBtn.type = 'button';
 gameBtn.className = 'game-btn';

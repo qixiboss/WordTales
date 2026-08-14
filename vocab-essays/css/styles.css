@@ -208,6 +208,35 @@ color:#fff}
 .game-btn.active {
 background:var(--accent2);
 color:#fff}
+/* 栏目级快捷完成入口放在“游戏”左侧；完成状态沿用记录表的勾选语义。 */
+.column-complete-btn {
+font-family:var(--sans);
+font-size:.68rem;
+font-weight:600;
+border:1px solid var(--accent);
+background:transparent;
+color:var(--accent);
+padding:.25rem .6rem;
+border-radius:16px;
+cursor:pointer;
+transition:background .2s,color .2s,transform .2s;
+white-space:nowrap;
+margin-left:.5rem;
+flex-shrink:0;
+align-self:center}
+.column-complete-btn:hover:not(:disabled) {
+background:var(--accent-soft);
+transform:translateY(-1px)}
+.column-complete-btn.is-completed {
+background:var(--accent);
+color:#fff}
+.column-complete-btn.is-completed:hover:not(:disabled) {
+background:#164b5b}
+.column-complete-btn:disabled {
+opacity:.6;
+cursor:wait}
+.column-complete-btn.is-saving {
+cursor:progress}
 .game-overlay {
 position:fixed;
 top:0;left:0;
@@ -1259,6 +1288,9 @@ font-size:.76rem}
 .game-btn {
 font-size:.62rem;
 padding:.2rem .45rem}
+.column-complete-btn {
+font-size:.62rem;
+padding:.2rem .45rem}
 }
 @media(max-width:380px) {
 .flip-toggle button {
@@ -1288,6 +1320,9 @@ left:calc(50% + 90px);
 width:150px;
 min-height:70px}
 .game-btn {
+font-size:.58rem;
+padding:.15rem .35rem}
+.column-complete-btn {
 font-size:.58rem;
 padding:.15rem .35rem}
 .game-exit {
@@ -1367,7 +1402,7 @@ inset:0;
 z-index:12000;
 display:none;
 align-items:stretch;
-justify-content:flex-end;
+justify-content:center;
 background:rgba(20,27,29,.55);
 backdrop-filter:blur(5px)}
 .record-overlay.active {
@@ -1375,7 +1410,7 @@ display:flex}
 .record-panel {
 display:flex;
 flex-direction:column;
-width:min(1080px,100%);
+width:100%;
 height:100%;
 overflow:hidden;
 background:#f7f4ed;
@@ -1456,6 +1491,37 @@ color:var(--muted);
 font-size:.74rem;
 line-height:1.4;
 text-align:right}
+.record-zoom-controls {
+display:flex;
+align-items:center;
+gap:.25rem;
+flex-shrink:0}
+.record-zoom-button,.record-zoom-fit {
+height:2.35rem;
+min-width:2.35rem;
+border:1px solid var(--rule);
+border-radius:999px;
+background:#fff;
+color:var(--ink);
+font:700 .8rem var(--sans);
+cursor:pointer}
+.record-zoom-button {
+font-size:1.05rem;
+line-height:1}
+.record-zoom-fit {
+padding:0 .65rem;
+color:var(--accent)}
+.record-zoom-button:hover:not(:disabled),.record-zoom-fit:hover:not(:disabled) {
+border-color:var(--accent);
+color:var(--accent)}
+.record-zoom-button:disabled {
+opacity:.35;
+cursor:not-allowed}
+.record-zoom-label {
+min-width:3.2rem;
+color:var(--muted);
+font:700 .72rem var(--sans);
+text-align:center}
 .record-table-scroll {
 flex:1;
 min-height:0;
@@ -1468,12 +1534,16 @@ background:#fff}
 outline:3px solid #0b74a5;
 outline-offset:3px}
 .record-table {
-width:100%;
+width:2320px;
 min-width:2320px;
 border-collapse:separate;
 border-spacing:0;
 table-layout:fixed;
 font-size:.76rem}
+.record-table-zoom {
+display:block;
+position:relative;
+width:max-content}
 .record-table th,.record-table td {
 height:54px;
 border-right:1px solid var(--rule);
@@ -1602,8 +1672,11 @@ order:1}
 .record-month-label {
 order:2;
 margin-left:auto}
-.record-save-status {
+.record-zoom-controls {
 order:3;
+margin-left:auto}
+.record-save-status {
+order:4;
 flex:1 0 100%;
 min-width:0;
 font-size:.68rem;
