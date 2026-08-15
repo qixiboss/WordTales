@@ -26,8 +26,8 @@ There is no package manager. The test suite uses Node's built-in test runner, su
 Scripts use `defer` and must remain in this dependency order (`check-integrity.js` enforces it):
 
 ```text
-vendor (ts-fsrs, supabase-js) → js/namespace.js → js/supabase-config.js → js/auth.js
-→ js/data.js → js/renderer.js → js/learning-progress.js → js/cloud-sync.js → js/study-record.js
+vendor/ts-fsrs → js/namespace.js → js/data.js → js/renderer.js → js/learning-progress.js
+→ js/study-record.js
 → js/features/: modal → reader → word-popup → progress → cards → game → copy-practice
   → analysis → navigation → app
 ```
@@ -36,8 +36,7 @@ vendor (ts-fsrs, supabase-js) → js/namespace.js → js/supabase-config.js → 
 | --- | --- | --- |
 | Data | `js/data.js` | Immutable content (`var sets = [...]`), occurrence→entry mapping, context/source-order APIs. |
 | Renderer | `js/renderer.js` | Escapes content; renders the article/library DOM. |
-| LearningProgress | `js/learning-progress.js` | FSRS-6 scheduling, IndexedDB/localStorage persistence, v1 migration, idempotent events, canonical star state and column-completion records. |
-| Auth / CloudSync | `js/auth.js`, `js/cloud-sync.js` | Supabase magic-link sign-in and RLS-protected profile sync with a local-only fallback. |
+| LearningProgress | `js/learning-progress.js` | FSRS-6 scheduling, IndexedDB/localStorage persistence, v1 migration, idempotent events, canonical star state and column-completion records. All learning data stays in the local browser only. |
 | StudyRecord | `js/study-record.js` | Monthly date-by-column completion table, dialog behavior and accessible checkboxes. |
 | Features/App | `js/features/` | One file per feature under `WordTales.Features.*`: modal infrastructure, reader, word popup, star/completion helpers, cards, game, copy practice, analysis, set navigation, and `app.js` (hash routing plus `App.init`). |
 

@@ -42,7 +42,7 @@ python3 -m http.server 8000
 2. 浏览词卡并阅读短文；点击高亮词可查看释义并听发音。
 3. 点击段尾“解析”查看翻译与语法说明，或选择倍速后朗读全文。
 4. 使用“游戏”按熟悉程度分类；标为“不太认识”的词会加星。
-5. 回到同一栏目点击“抄写”，集中练习已加星的词；完成后可直接点击栏目标题右侧、位于“游戏”左边的“今日完成”，也可以打开页首“记录表”补记。登录后这条完成记录会随账号同步。
+5. 回到同一栏目点击“抄写”，集中练习已加星的词；完成后可直接点击栏目标题右侧、位于“游戏”左边的“今日完成”，也可以打开页首“记录表”补记。完成记录保存在本机浏览器，无需登录。
 
 ## 内容概览
 
@@ -70,19 +70,15 @@ python3 -m http.server 8000
 │   ├── helpers/                       # 浏览器环境模拟与共享常量
 │   ├── data.test.js                   # 语料索引与规范词条
 │   ├── learning-progress.test.js      # FSRS 与学习档案
-│   ├── cloud-sync.test.js             # 云同步合并与归属切换
 │   └── study-record.test.js           # 学习记录表
 ├── vocab-essays/
 │   ├── audio/                         # 28 个栏目朗读 MP3
 │   ├── css/styles.css                 # 文章主页、交互和响应式样式
 │   ├── js/
 │   │   ├── namespace.js               # WordTales 命名空间
-│   │   ├── supabase-config.js         # Supabase 公开配置（URL 与 publishable key）
-│   │   ├── auth.js                    # 魔法链接登录与本地模式
 │   │   ├── data.js                    # 内容、出现项和规范词条索引
 │   │   ├── renderer.js                # 文章主页 DOM
-│   │   ├── learning-progress.js       # FSRS、迁移、事件和统一星标
-│   │   ├── cloud-sync.js              # 学习档案云同步
+│   │   ├── learning-progress.js       # FSRS、迁移、事件和统一星标（仅存本地浏览器）
 │   │   ├── study-record.js            # 按月学习记录表与勾选交互
 │   │   └── features/                  # 页面功能模块（WordTales.Features.*）
 │   │       ├── modal.js               # 共享弹层无障碍基础设施
@@ -105,13 +101,11 @@ python3 -m http.server 8000
 经典脚本使用 `defer` 按依赖顺序加载：
 
 ```text
-ts-fsrs / supabase-js UMD
+ts-fsrs UMD
   → namespace
-  → supabase-config → auth
   → data
   → renderer
   → learning-progress
-  → cloud-sync
   → study-record
   → features / App.init
 ```
@@ -138,15 +132,9 @@ ts-fsrs / supabase-js UMD
 
 学习档案、事件和记录表勾选优先保存在 IndexedDB。v1 档案会幂等迁移为规范词条状态：保留既有到期时间，合并重复词记录，并把旧字符串星标映射到同拼写的规范词条。新档案中的 `isStarred` 是唯一事实来源；`localStorage.starredWords` 只作为旧功能兼容镜像。
 
-### 跨设备同步（Supabase）
+### 数据只保存在本机浏览器
 
-站点已预留 Supabase Magic Link 登录和按账号同步的云端档案。离线或未登录时仍照常使用本地进度；登录后会把当前浏览器作为离线缓存，并同步同一账号的云端档案。
-
-1. 在 Supabase 项目执行 `supabase/migrations/20260811000000_create_learning_profiles.sql`。
-2. 在 Supabase Auth 的 URL Configuration 中添加 GitHub Pages 地址（例如 `https://<用户名>.github.io/<仓库>/`）作为 Site URL 和 Redirect URL。
-3. 在 `vocab-essays/js/supabase-config.js` 填入项目 URL 和 **publishable key**。该 key 可公开；绝不能填写 `service_role` 或其他 secret key。
-
-`learning_profiles` 已开启 RLS，登录用户只能读写 `user_id = auth.uid()` 的那一行。首次登录时：若云端没有档案，会上传本机已有进度；若云端已有较新的档案，会优先下载云端版本。多人共用同一台设备时，不同账号不会互相上传既有的本地档案。
+学习档案、事件和记录表勾选不上传任何服务器，仅保存在当前浏览器：优先写入 IndexedDB（`wordtales-learning`），浏览器无法使用 IndexedDB 时自动降级到 localStorage（`wordtales.learning.v1`）。清除浏览器数据会同时清除学习记录；不同浏览器或设备之间不共享进度。
 
 浏览器无法使用 IndexedDB 时自动降级到 localStorage。旧单卡会话的 `wordtales.study-session.v1` 数据不会被读取，也不会被主动删除；已有词条状态、文章记录和加星数据继续保留。
 

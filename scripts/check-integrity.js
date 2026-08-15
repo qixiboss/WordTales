@@ -17,14 +17,10 @@ const errors = [];
 
 const expectedScripts = [
   'vendor/ts-fsrs/index.umd.js?v=5.4.1',
-  'vendor/supabase-js/supabase.js?v=2.112.2',
   'js/namespace.js?v=3.0.0',
-  'js/supabase-config.js?v=1.0.0',
-  'js/auth.js?v=1.0.0',
   'js/data.js?v=3.0.0',
   'js/renderer.js?v=3.0.0',
   'js/learning-progress.js?v=3.1.0',
-  'js/cloud-sync.js?v=1.0.0',
   'js/study-record.js?v=1.1.0',
   'js/features/modal.js?v=3.1.0',
   'js/features/reader.js?v=3.1.0',

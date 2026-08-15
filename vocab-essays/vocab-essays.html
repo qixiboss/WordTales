@@ -22,7 +22,6 @@
         记录表
       </button>
     </div>
-    <div class="auth-mount" id="authMount" aria-live="polite"></div>
   </div>
 </header>
 <nav class="toc library-view" id="toc" aria-label="栏目目录"></nav>
@@ -32,6 +31,17 @@
   <div class="changelog-head">
     <h2>第八份：更新日志</h2>
     <p>记录 WordTales 从第一行代码至今的每一次蜕变。大版本意味着全新能力板块的上线，小版本则是在现有框架下的功能增强与打磨。</p>
+  </div>
+
+  <div class="changelog-version">
+    <h3>v3.7 <span class="cv-badge minor">小版本</span></h3>
+    <div class="cv-date">2026-08-15</div>
+    <div class="cv-desc"><strong>数据完全保存在本机浏览器。</strong>移除云端同步与邮箱登录，学习进度、星标和记录表勾选不再上传任何服务器，只写入当前浏览器（IndexedDB，不可用时自动降级 localStorage）。</div>
+    <ul>
+      <li>移除页首登录入口与“已同步”状态提示</li>
+      <li>已有学习档案原样保留，无需任何操作</li>
+      <li>清除浏览器数据前，学习记录仅存在于本机</li>
+    </ul>
   </div>
 
   <div class="changelog-version">
@@ -48,11 +58,11 @@
   <div class="changelog-version">
     <h3>v3.5 <span class="cv-badge minor">小版本</span></h3>
     <div class="cv-date">2026-08-14</div>
-    <div class="cv-desc"><strong>栏目标题旁新增快捷完成按钮。</strong>无需打开学习记录表，即可按今天的日期完成当前栏目；记录仍沿用本地保存与登录后的云端同步。</div>
+    <div class="cv-desc"><strong>栏目标题旁新增快捷完成按钮。</strong>无需打开学习记录表，即可按今天的日期完成当前栏目；记录保存在本机浏览器，无需登录。</div>
     <ul>
       <li>“今日完成”按钮放在每个栏目“游戏”入口左侧</li>
       <li>保存成功后显示“已完成”，再次点击可取消当天记录</li>
-      <li>按钮操作与记录表共用同一条完成记录和数据库同步链路</li>
+      <li>按钮操作与记录表共用同一条完成记录和本地保存链路</li>
     </ul>
   </div>
 
@@ -231,21 +241,13 @@
 
 <script defer src="vendor/ts-fsrs/index.umd.js?v=5.4.1"></script>
 
-<script defer src="vendor/supabase-js/supabase.js?v=2.112.2"></script>
-
 <script defer src="js/namespace.js?v=3.0.0"></script>
-
-<script defer src="js/supabase-config.js?v=1.0.0"></script>
-
-<script defer src="js/auth.js?v=1.0.0"></script>
 
 <script defer src="js/data.js?v=3.0.0"></script>
 
 <script defer src="js/renderer.js?v=3.0.0"></script>
 
 <script defer src="js/learning-progress.js?v=3.1.0"></script>
-
-<script defer src="js/cloud-sync.js?v=1.0.0"></script>
 
 <script defer src="js/study-record.js?v=1.1.0"></script>
 
